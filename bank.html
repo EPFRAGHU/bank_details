@@ -1350,18 +1350,20 @@
           }
         }
       } catch (e) { /* not logged in */ }
-      // Start running clock
+      // Start running clock (India/IST time)
       function updateClock() {
         const el = document.getElementById('currentDateTime');
         if (!el) return;
         const d = new Date();
-        const dd = String(d.getDate()).padStart(2, '0');
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const yyyy = d.getFullYear();
-        const hh = String(d.getHours()).padStart(2, '0');
-        const mi = String(d.getMinutes()).padStart(2, '0');
-        const ss = String(d.getSeconds()).padStart(2, '0');
-        el.textContent = `${dd}/${mm}/${yyyy} (${hh}:${mi}:${ss})`;
+        // Convert to IST (UTC+5:30)
+        const ist = new Date(d.getTime() + (5 * 60 + 30) * 60 * 1000);
+        const dd = String(ist.getUTCDate()).padStart(2, '0');
+        const mm = String(ist.getUTCMonth() + 1).padStart(2, '0');
+        const yyyy = ist.getUTCFullYear();
+        const hh = String(ist.getUTCHours()).padStart(2, '0');
+        const mi = String(ist.getUTCMinutes()).padStart(2, '0');
+        const ss = String(ist.getUTCSeconds()).padStart(2, '0');
+        el.textContent = `${dd}/${mm}/${yyyy} (${hh}:${mi}:${ss}) IST`;
       }
       updateClock();
       setInterval(updateClock, 1000);
@@ -1371,22 +1373,22 @@
       recalcTotal();
     })();
 
-    // Version History Modal
+    // Version History Modal (all times in IST/India)
     const VERSION_HISTORY = [
-      { v: "v1.2.5", date: "2026-08-27 20:59", changes: ["PDF: right-align amount columns (7A, 7Q(7A), 14B, 7Q(14B), Grand Total, Total)"] },
-      { v: "v1.2.4", date: "2026-08-27 20:56", changes: ["PDF: fix column widths to fit content", "IFSC/A/c No use plain strings to prevent breaking"] },
-      { v: "v1.2.3", date: "2026-08-27 20:52", changes: ["PDF: widen amount/IFSC columns", "Simplify money format (no Rs., no .00 for whole numbers)"] },
-      { v: "v1.2.2", date: "2026-08-27 20:47", changes: ["Removed 'Back to users' link from bank page (admin-only access)"] },
-      { v: "v1.2.1", date: "2026-08-27 20:39", changes: ["Fix 8F payment_status sync: use bank_accounts as source of truth"] },
-      { v: "v1.2.0", date: "2026-08-27 20:34", changes: ["Format period display as MM/YYYY in both tables (e.g. 01/2005 to 05/2010)"] },
-      { v: "v1.1.2", date: "2026-08-27 20:26", changes: ["Fix AEO column wrapping and split period display"] },
-      { v: "v1.1.1", date: "2026-08-27 20:20", changes: ["Improve UI: wider AEO column, stacked Period fields, better PDF wrapping"] },
-      { v: "v1.1.0", date: "2026-08-27 20:10", changes: ["Add Payment column to 8F Issued tab (after 8F Date)"] },
-      { v: "v1.0.4", date: "2026-08-27 20:00", changes: ["Add login page and session management (/login, /api/login, /api/logout, /api/me)"] },
-      { v: "v1.0.3", date: "2026-08-27 19:34", changes: ["Add PostgreSQL/Neon database support"] },
-      { v: "v1.0.2", date: "2026-08-27 19:23", changes: ["Add Turso (libSQL) database support"] },
-      { v: "v1.0.1", date: "2026-08-27 19:18", changes: ["Fix backend bugs (ForeignKeyError, FK enforcement, dead POST code, INSERT mismatches)"] },
-      { v: "v1.0.0", date: "2026-08-27 18:18", changes: ["Initial release: bank.html rewritten to match bank-preview.html design (3-card layout + EPFO table)"] },
+      { v: "v1.2.5", date: "2026-08-28 02:29 IST", changes: ["PDF: right-align amount columns (7A, 7Q(7A), 14B, 7Q(14B), Grand Total, Total)"] },
+      { v: "v1.2.4", date: "2026-08-28 02:26 IST", changes: ["PDF: fix column widths to fit content", "IFSC/A/c No use plain strings to prevent breaking"] },
+      { v: "v1.2.3", date: "2026-08-28 02:22 IST", changes: ["PDF: widen amount/IFSC columns", "Simplify money format (no Rs., no .00 for whole numbers)"] },
+      { v: "v1.2.2", date: "2026-08-28 02:17 IST", changes: ["Removed 'Back to users' link from bank page (admin-only access)"] },
+      { v: "v1.2.1", date: "2026-08-28 02:09 IST", changes: ["Fix 8F payment_status sync: use bank_accounts as source of truth"] },
+      { v: "v1.2.0", date: "2026-08-28 02:04 IST", changes: ["Format period display as MM/YYYY in both tables (e.g. 01/2005 to 05/2010)"] },
+      { v: "v1.1.2", date: "2026-08-28 01:56 IST", changes: ["Fix AEO column wrapping and split period display"] },
+      { v: "v1.1.1", date: "2026-08-28 01:50 IST", changes: ["Improve UI: wider AEO column, stacked Period fields, better PDF wrapping"] },
+      { v: "v1.1.0", date: "2026-08-28 01:40 IST", changes: ["Add Payment column to 8F Issued tab (after 8F Date)"] },
+      { v: "v1.0.4", date: "2026-08-28 01:30 IST", changes: ["Add login page and session management (/login, /api/login, /api/logout, /api/me)"] },
+      { v: "v1.0.3", date: "2026-08-28 01:04 IST", changes: ["Add PostgreSQL/Neon database support"] },
+      { v: "v1.0.2", date: "2026-08-27 23:53 IST", changes: ["Add Turso (libSQL) database support"] },
+      { v: "v1.0.1", date: "2026-08-27 23:48 IST", changes: ["Fix backend bugs (ForeignKeyError, FK enforcement, dead POST code, INSERT mismatches)"] },
+      { v: "v1.0.0", date: "2026-08-27 22:48 IST", changes: ["Initial release: bank.html rewritten to match bank-preview.html design (3-card layout + EPFO table)"] },
     ];
     function showVersionHistory() {
       let modal = document.getElementById('versionModal');
