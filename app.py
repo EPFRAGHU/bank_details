@@ -873,7 +873,12 @@ def _fmt_money(v):
     if v is None or v == "":
         return "—"
     try:
-        return f"Rs. {float(v):,.2f}"
+        n = float(v)
+        if n == 0:
+            return "0"
+        if n == int(n):
+            return f"{int(n):,}"
+        return f"{n:,.2f}"
     except (TypeError, ValueError):
         return str(v)
 
@@ -1016,10 +1021,10 @@ def export_pdf():
     avail = 281 * mm
     if tab == "8f":
         # #, Est Code, Establishment, AEO, Period, 7A, 7Q(7A), 14B, 7Q(14B), Grand Total, 8F No, 8F Date, Bank, IFSC, A/c No, Status
-        widths = [6, 22, 32, 22, 20, 14, 14, 14, 14, 18, 14, 16, 22, 16, 20, 14]
+        widths = [6, 24, 32, 22, 18, 24, 24, 24, 24, 26, 14, 18, 20, 20, 20, 14]
     else:
         # #, Est Code, Establishment, AEO, IFSC, Bank, Branch, A/c No, Period, Total, Payment, 8F No, 8F Date
-        widths = [6, 24, 34, 26, 18, 26, 22, 24, 26, 20, 16, 16, 18]
+        widths = [6, 24, 34, 24, 20, 26, 22, 24, 24, 28, 16, 16, 18]
     total_w = sum(widths)
     if total_w > 0:
         scale = avail / total_w
