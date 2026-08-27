@@ -971,8 +971,8 @@ def export_pdf():
                      _fmt_money(r.get("amount_7q_14b_total")), _fmt_money(r.get("total_amount")),
                      r.get("eight_f_number",""), _fmt_date(r.get("eight_f_issued_date")),
                      Paragraph(str(r.get("bank_name","") or "—"), _cell),
-                     Paragraph(str(r.get("ifsc","") or "—"), _cell),
-                     Paragraph(str(r.get("account_number","") or "—"), _cell),
+                     str(r.get("ifsc","") or "—"),
+                     str(r.get("account_number","") or "—"),
                      (r.get("payment_status","") or "").upper()] for i, r in enumerate(records)]
             title = "8F Issued Records"
         else:
@@ -992,10 +992,10 @@ def export_pdf():
                        "A/c No", "Period", "Total", "Payment", "8F No", "8F Date"]
             rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), _cell),
                      Paragraph(str(r.get("aeo","") or "—"), _cell),
-                     Paragraph(str(r.get("ifsc","") or "—"), _cell),
+                     str(r.get("ifsc","") or "—"),
                      Paragraph(str(r.get("bank_name","") or "—"), _cell),
                      Paragraph(str(r.get("branch","") or "—"), _cell),
-                     Paragraph(str(r.get("account_number","") or "—"), _cell),
+                     str(r.get("account_number","") or "—"),
                      Paragraph(str(r.get("period","") or "—"), _cell),
                      _fmt_money(r.get("total_amount")),
                      (r.get("payment_status","") or "").upper(),
@@ -1021,10 +1021,10 @@ def export_pdf():
     avail = 281 * mm
     if tab == "8f":
         # #, Est Code, Establishment, AEO, Period, 7A, 7Q(7A), 14B, 7Q(14B), Grand Total, 8F No, 8F Date, Bank, IFSC, A/c No, Status
-        widths = [6, 24, 32, 22, 18, 24, 24, 24, 24, 26, 14, 18, 20, 20, 20, 14]
+        widths = [6, 30, 30, 24, 18, 24, 24, 24, 24, 28, 16, 18, 20, 22, 20, 14]
     else:
         # #, Est Code, Establishment, AEO, IFSC, Bank, Branch, A/c No, Period, Total, Payment, 8F No, 8F Date
-        widths = [6, 24, 34, 24, 20, 26, 22, 24, 24, 28, 16, 16, 18]
+        widths = [6, 30, 32, 26, 24, 28, 22, 26, 22, 30, 16, 16, 20]
     total_w = sum(widths)
     if total_w > 0:
         scale = avail / total_w
