@@ -118,30 +118,30 @@
 
 ## Current Development Status
 
-**Last Completed:** `bank.html` rewritten to match `bank-preview.html` design:
-- 3 equal cards (Establishment | Bank | Payment) with uniform `.field` grid layout
-- Compact EPFO table with 4 sections (7A, 7Q of 7A, 14B, 7Q of 14B) × 5 account columns + Total column
-- Grand total row with gradient background
-- Inline Period (from/to month inputs), 8F (checkbox + number + date), Status (select + date)
-- All form fields map to existing backend API field names
-- All JS event handlers wired correctly to new DOM (no `outerHTML` cloning)
-- Establishment search with dropdown, IFSC lookup, auto-fill from existing records
-- Edit/Delete in bank accounts table, PDF export for both tabs
-- 8F Issued tab with 15 columns
-- Tab switching, filters, sort dropdowns all working
+**Last Completed:** Project pushed to GitHub: `https://github.com/EPFRAGHU/bank_details.git`
 
-**Currently Working On:** Updating documentation (AGENTS.md, CHANGELOG.md) to reflect completed work.
+**Currently Working On:** Saving final state to memory (AGENTS.md, CHANGELOG.md)
 
-**Last Known Working State:** Flask app runs on port 5000; all APIs return correct data; bank.html now matches preview design structurally and functionally.
+**Last Known Working State:**
+- Flask app runs on port 5000
+- All APIs return correct data
+- `bank.html` matches `bank-preview.html` design (3-card layout + EPFO table)
+- Grand Total row shows per-account sums (A/c 1, 2, 10, 21, 22) + overall total
+- Period fields use `type="date"` with calendar picker
+- Period persistence on edit works for all formats
+- AEO column added to bank accounts table
+- Bank name shows only bank name (no branch, no hyphen)
+- 48,791 establishments preserved in database
 
 **Next Tasks:**
-1. ✅ Documentation update (in progress)
-2. Verify all CRUD operations via browser testing
-3. Verify PDF export works for both tabs with data
-4. Test establishment search and IFSC lookup end-to-end
-5. Test edit/delete in table
+1. ✅ Push to GitHub (completed)
+2. ✅ Update documentation (in progress)
+3. User acceptance testing in browser
+4. Future feature additions per user requirements
 
 **Unresolved Issues:** None critical.
+
+**Git Repository:** `https://github.com/EPFRAGHU/bank_details.git` (branch: main)
 
 ---
 

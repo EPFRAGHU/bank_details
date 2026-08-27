@@ -2,10 +2,37 @@
 
 ## [Unreleased]
 
-### In Progress
-- Final verification of bank.html CRUD operations, PDF export, establishment search, IFSC lookup
+### Planned
+- User acceptance testing in browser
+- Future feature additions per user requirements
 
-## [2026-08-27] — Backend Bug Fixes (app.py)
+## [2026-08-27] — Git Push & Memory Save
+
+### Added
+- `.gitignore` — excludes database, logs, test files, IDE configs
+- Git repository initialized and pushed to `https://github.com/EPFRAGHU/bank_details.git`
+
+### Changed
+- `AGENTS.md` — Updated CURRENT STATUS section with git push milestone and last known working state
+- `CHANGELOG.md` — Added git push entry
+
+### Notes
+- Database (`logs/onboarding.sqlite3`) excluded from git via .gitignore to preserve local data
+- 13 files committed (52,443 insertions)
+- Branch: `main`
+
+## [2026-08-27] — UI Refinements (Round 2)
+
+### Changed
+- `bank.html` — Period fields changed from `type="month"` to `type="date"` (full calendar picker)
+- `bank.html` — Bank name in table shows only `bank_name` (removed " — Branch" suffix, removed `bank_branch` field)
+- `bank.html` — AEO column added to "Entered Bank Accounts" table after Establishment name
+- `bank.html` — GRAND TOTAL row now shows per-account sums (A/c 1, 2, 10, 21, 22) + overall total
+- `bank.html` — Period persistence on edit fixed (handles "15 May 2005 to 10 May 2008" format)
+- `bank.html` — Address field moved from Establishment card to Bank card (where it belongs)
+- `bank.html` — Address column removed from "Entered Bank Accounts" table
+
+## [Unreleased]
 
 ### Fixed
 - **Invalid exception class** — `except sqlite3.ForeignKeyError` (which does not exist in Python's sqlite3 module) replaced with `except sqlite3.IntegrityError` + message inspection
