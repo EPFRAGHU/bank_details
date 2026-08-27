@@ -276,7 +276,8 @@
     .data-table .col-period { width: 140px; }
     .data-table .col-bank { min-width: 120px; }
     .data-table .col-branch { min-width: 100px; }
-    .data-table .col-aeo { width: 180px; max-width: 220px; white-space: normal; word-break: break-word; }
+    .data-table .col-aeo { min-width: 160px; max-width: 200px; white-space: normal; word-break: normal; overflow-wrap: break-word; line-height: 1.3; }
+    .data-table td.col-aeo { white-space: normal; word-break: normal; overflow-wrap: break-word; }
     .data-table input, .data-table textarea {
       width: 100%; padding: 4px 6px; border: 1px solid #d0d4dc;
       border-radius: 4px; font-size: 11px; font-family: inherit; box-sizing: border-box;
@@ -1062,7 +1063,7 @@
             <td class="col-id">${u.id}</td>
             <td class="col-code">${escapeHtml(u.est_id)}</td>
             <td class="col-est">${escapeHtml(u.est_name)}</td>
-            <td class="col-aeo">${isEditing
+            <td class="col-aeo wrap">${isEditing
                 ? `<input data-field="aeo" value="${escapeHtml(u.aeo || '')}" />`
                 : escapeHtml(u.aeo || '—')}</td>
             <td class="col-ifsc">${isEditing
@@ -1249,13 +1250,18 @@
         return;
       }
       emptyEightFRowEl.style.display = 'none';
-      eightFRowsEl.innerHTML = rows.map(r => `
+      eightFRowsEl.innerHTML = rows.map(r => {
+        const periodParts = (r.period || '').split(/\s+to\s+/i);
+        const periodHtml = periodParts.length > 1
+          ? `<div>${escapeHtml(periodParts[0].trim() || '—')}</div><div style="color:#666; font-size:10px;">to</div><div>${escapeHtml(periodParts[1].trim() || '—')}</div>`
+          : escapeHtml(r.period || '—');
+        return `
         <tr>
           <td class="col-id">${r.id}</td>
           <td class="col-code">${escapeHtml(r.est_id || '')}</td>
-          <td class="col-est">${escapeHtml(r.est_name || '')}</td>
-          <td class="col-aeo">${escapeHtml(r.aeo || '—')}</td>
-          <td class="col-period">${escapeHtml(r.period || '—')}</td>
+          <td class="col-est wrap">${escapeHtml(r.est_name || '')}</td>
+          <td class="col-aeo wrap">${escapeHtml(r.aeo || '—')}</td>
+          <td class="col-period wrap" style="line-height:1.4;">${periodHtml}</td>
           <td class="col-amount">${fmtMoney(r.amount_7a_total)}</td>
           <td class="col-amount">${fmtMoney(r.amount_7q_7a_total)}</td>
           <td class="col-amount">${fmtMoney(r.amount_14b_total)}</td>
@@ -1268,7 +1274,7 @@
           <td class="col-ifsc">${escapeHtml(r.ifsc || '—')}</td>
           <td class="col-acct">${escapeHtml(r.account_number || '—')}</td>
         </tr>
-      `).join('');
+      `}).join('');
     }
     async function loadEightFRecords() {
       const res = await fetch('/api/epfo-8f');
