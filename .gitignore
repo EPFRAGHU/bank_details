@@ -1,0 +1,23 @@
+# Database
+logs/onboarding.sqlite3
+logs/backups/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Test files
+test_*.py
+test_*.html
+test_*.js
+check_*.py
+create_*.py
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Onboarded Users</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6fa;
+      padding: 30px 16px;
+      color: #1a1a1a;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 6px; }
+    .sub { color: #666; font-size: 13px; margin-bottom: 22px; }
+    .toolbar {
+      display: flex; gap: 10px; align-items: center; margin-bottom: 14px;
+    }
+    input[type="search"] {
+      flex: 1; max-width: 320px;
+      padding: 9px 12px; border: 1.5px solid #d0d4dc; border-radius: 8px; font-size: 13px;
+    }
+    button.refresh {
+      padding: 9px 16px; background: #667eea; color: #fff; border: none;
+      border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    button.refresh:hover { background: #5568d3; }
+    .card {
+      background: #fff; border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: #fafbff; }
+    th, td {
+      padding: 12px 14px; text-align: left; border-bottom: 1px solid #eef0f5;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;
+    }
+    th {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+      color: #6b7280; font-weight: 600;
+    }
+    tr:hover td { background: #fafbff; }
+    .empty { padding: 40px; text-align: center; color: #888; }
+    .pill {
+      display: inline-block; padding: 2px 8px; background: #eef0ff; color: #4c51bf;
+      border-radius: 999px; font-size: 11px; font-weight: 600;
+    }
+    .count { color: #6b7280; font-size: 12px; margin-left: auto; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Onboarded Users</h1>
+    <p class="sub">All registrations saved in <code>logs/onboarding.sqlite3</code>.</p>
+
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Filter by name, email, country..." />
+      <span class="count" id="count"></span>
+      <button class="refresh" id="refresh">Refresh</button>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Full Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>DOB</th>
+            <th>Country</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display:none;">No users yet.</div>
+    </div>
+  </div>
+
+  <script>
+    const rowsEl = document.getElementById('rows');
+    const emptyEl = document.getElementById('empty');
+    const countEl = document.getElementById('count');
+    const qEl = document.getElementById('q');
+
+    let users = [];
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function render() {
+      const q = qEl.value.trim().toLowerCase();
+      const filtered = q
+        ? users.filter(u =>
+            (u.full_name || '').toLowerCase().includes(q) ||
+            (u.email || '').toLowerCase().includes(q) ||
+            (u.country || '').toLowerCase().includes(q))
+        : users;
+
+      countEl.textContent = `${filtered.length} of ${users.length}`;
+      if (filtered.length === 0) {
+        rowsEl.innerHTML = '';
+        emptyEl.style.display = 'block';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      rowsEl.innerHTML = filtered.map(u => `
+        <tr>
+          <td>${u.id}</td>
+          <td>${escapeHtml(u.full_name)}</td>
+          <td>${escapeHtml(u.email)}</td>
+          <td>${escapeHtml(u.phone || '—')}</td>
+          <td>${escapeHtml(u.date_of_birth || '—')}</td>
+          <td><span class="pill">${escapeHtml(u.country)}</span></td>
+          <td>${escapeHtml(u.created_at)}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function load() {
+      const res = await fetch('/api/users');
+      users = await res.json();
+      render();
+    }
+
+    qEl.addEventListener('input', render);
+    document.getElementById('refresh').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>

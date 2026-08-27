@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bank Details — EPFO</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f2f5;
+      padding: 20px 16px; color: #1a1a1a;
+    }
+    .wrap { max-width: 1400px; margin: 0 auto; }
+
+    .nav { margin-bottom: 12px; font-size: 12px; }
+    .nav a { color: #667eea; text-decoration: none; }
+
+    .section {
+      background: #fff; border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      margin-bottom: 14px; overflow: hidden;
+    }
+    .section-header {
+      padding: 9px 16px; background: #f8f9fc;
+      border-bottom: 1px solid #e8ebf0;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: #4c51bf; font-weight: 700;
+    }
+    .section-body { padding: 14px 16px; }
+
+    /* === 3 equal cards === */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 1100px) { .cards { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 700px) { .cards { grid-template-columns: 1fr; } }
+
+    .card {
+      border: 1px solid #e8ebf0; border-radius: 8px;
+      padding: 14px; background: #fafbfc;
+    }
+    .card-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+      color: #4c51bf; font-weight: 700;
+      padding-bottom: 10px; margin-bottom: 10px;
+      border-bottom: 1px solid #e8ebf0;
+    }
+
+    /* Field: uniform label + input */
+    .field {
+      display: grid;
+      grid-template-columns: 70px 1fr;
+      gap: 8px; align-items: center;
+      margin-bottom: 8px;
+    }
+    .field.address { align-items: start; }
+    .field label {
+      font-size: 11px; font-weight: 600; color: #666;
+      text-align: right; padding-top: 2px;
+    }
+    .field.address label { padding-top: 8px; }
+    .field input, .field select, .field textarea {
+      width: 100%; padding: 6px 10px; border: 1px solid #d0d4dc;
+      border-radius: 5px; font-size: 12px; font-family: inherit;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      outline: none; border-color: #667eea;
+      box-shadow: 0 0 0 2px rgba(102,126,234,0.15);
+    }
+    .field input[readonly], .field textarea[readonly] {
+      background: #f5f6f9; color: #555;
+    }
+    .field textarea { resize: vertical; min-height: 48px; }
+
+    /* 8F inline */
+    .eight-f-inline {
+      display: grid;
+      grid-template-columns: 55px 80px 1fr;
+      gap: 6px; align-items: center;
+    }
+    .eight-f-inline .ck {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10px; font-weight: 600;
+      white-space: nowrap;
+    }
+    .eight-f-inline .ck input {
+      width: 12px; height: 12px; margin: 0; flex-shrink: 0;
+    }
+    .eight-f-inline input[type="text"] {
+      width: 100%; min-width: 80px; padding: 5px 6px; border: 1px solid #d0d4dc;
+      border-radius: 4px; font-size: 10px; font-family: inherit;
+    }
+    .eight-f-inline input[type="date"] {
+      width: 100%; padding: 5px 6px; border: 1px solid #d0d4dc;
+      border-radius: 4px; font-size: 10px; font-family: inherit;
+      min-width: 0;
+    }
+
+    /* Period inline */
+    .period-inline {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 6px; align-items: center;
+    }
+    .period-inline input {
+      width: 100%; padding: 5px 8px; border: 1px solid #d0d4dc;
+      border-radius: 4px; font-size: 11px; font-family: inherit;
+      min-width: 0;
+    }
+    .period-inline span {
+      font-size: 11px; color: #888; font-weight: 600;
+    }
+
+    /* Status inline */
+    .status-inline {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 6px; align-items: center;
+    }
+    .status-inline select {
+      width: 100%; padding: 5px 8px; border: 1px solid #d0d4dc;
+      border-radius: 4px; font-size: 11px; font-family: inherit;
+      min-width: 0;
+    }
+    .status-inline input {
+      width: 100%; padding: 5px 8px; border: 1px solid #d0d4dc;
+      border-radius: 4px; font-size: 11px; font-family: inherit;
+      min-width: 0;
+    }
+    .status-inline span {
+      font-size: 11px; color: #888; font-weight: 600;
+    }
+
+    /* Dropdown */
+    .dropdown { position: relative; }
+    .dropdown-menu {
+      position: absolute; top: 100%; left: 0; right: 0;
+      max-height: 280px; overflow-y: auto;
+      background: #fff; border: 1.5px solid #d0d4dc; border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      margin-top: 4px; z-index: 50; display: none;
+    }
+    .dropdown-menu.open { display: block; }
+    .dropdown-item {
+      padding: 8px 12px; cursor: pointer; font-size: 12px;
+      border-bottom: 1px solid #f1f2f6; line-height: 1.3;
+    }
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:hover, .dropdown-item.active { background: #eef0ff; }
+    .dropdown-item .code {
+      display: block; font-weight: 600; color: #4c51bf; font-size: 11px;
+    }
+    .dropdown-item .name {
+      display: block; color: #1a1a1a; font-size: 11px;
+      white-space: normal; word-break: break-word; margin-top: 2px;
+    }
+    .dropdown-empty { padding: 12px; font-size: 12px; color: #888; text-align: center; }
+
+    .ifsc-feedback {
+      font-size: 11px; margin-top: 3px; min-height: 14px;
+    }
+    .ifsc-feedback.ok { color: #1f8a4c; }
+    .ifsc-feedback.err { color: #c0392b; }
+    .ifsc-feedback.loading { color: #667eea; }
+
+    .existing-accounts {
+      background: #fffbe6; border: 1px solid #f0e0a0; border-radius: 8px;
+      padding: 8px 12px; margin: 8px 0 4px; font-size: 11px; color: #7a5d00;
+    }
+    .existing-accounts strong { color: #5a4400; }
+    .existing-accounts ul { margin: 4px 0 0 16px; padding: 0; }
+    .existing-accounts li { margin: 1px 0; }
+
+    /* EPFO table */
+    .epfo-table {
+      width: 100%; border-collapse: separate; border-spacing: 0;
+      font-size: 12px;
+    }
+    .epfo-table th {
+      padding: 6px 8px; text-align: center;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+      color: #6b7280; font-weight: 700;
+      background: #f8f9fc; border-bottom: 2px solid #d0d4dc;
+    }
+    .epfo-table th:first-child { width: 120px; text-align: left; padding-left: 12px; }
+    .epfo-table th:last-child { width: 110px; }
+    .epfo-table td {
+      padding: 4px 6px; border-bottom: 1px solid #eef0f5;
+      text-align: right;
+    }
+    .epfo-table td:first-child { text-align: left; padding-left: 12px; }
+    .epfo-table tr:nth-child(even) td { background: #fafbfc; }
+    .epfo-table tr.grand td {
+      background: linear-gradient(90deg, #4c51bf, #667eea);
+      color: #fff; font-weight: 700; font-size: 13px;
+      border-bottom: none; padding: 8px;
+    }
+    .epfo-section-label {
+      display: inline-block; padding: 3px 10px;
+      background: #eef0ff; color: #4c51bf;
+      border-radius: 4px; font-weight: 700; font-size: 12px;
+    }
+    .epfo-section-label small {
+      display: block; font-size: 9px; font-weight: 500; color: #888;
+    }
+    .epfo-input {
+      width: 100%; padding: 5px 8px; border: 1px solid #d0d4dc;
+      border-radius: 4px; font-size: 12px; text-align: right;
+      font-family: inherit;
+    }
+    .epfo-input:focus {
+      outline: none; border-color: #667eea;
+      box-shadow: 0 0 0 2px rgba(102,126,234,0.15);
+    }
+    .epfo-total {
+      display: inline-block; padding: 4px 10px;
+      background: #eef0ff; color: #1a1a1a;
+      border-radius: 4px; font-weight: 700;
+    }
+    .epfo-grand-total {
+      display: inline-block; padding: 4px 10px;
+      background: rgba(255,255,255,0.2); color: #fff;
+      border-radius: 4px; font-weight: 700; font-size: 14px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex; gap: 4px; margin-top: 14px;
+      border-bottom: 2px solid #e0e4ec;
+    }
+    .tab-btn {
+      padding: 8px 16px; background: transparent; border: none;
+      font-size: 12px; font-weight: 600; color: #6b7280;
+      cursor: pointer;
+    }
+    .tab-btn:hover { color: #4c51bf; }
+    .tab-btn.active {
+      color: #4c51bf; background: #fff;
+      border: 1px solid #e0e4ec; border-bottom: 2px solid #fff;
+      margin-bottom: -2px;
+    }
+
+    /* Data tables */
+    .data-table {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+      table-layout: auto;
+    }
+    .data-table th, .data-table td {
+      padding: 8px 10px; text-align: left; border-bottom: 1px solid #eef0f5;
+      white-space: nowrap; vertical-align: top;
+    }
+    .data-table th.wrap, .data-table td.wrap {
+      white-space: normal; word-break: break-word; overflow-wrap: anywhere;
+    }
+    .data-table th {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+      color: #6b7280; font-weight: 700; background: #f8f9fc;
+    }
+    .data-table tr:hover td { background: #fafbff; }
+    .data-table .col-id { width: 40px; text-align: center; }
+    .data-table .col-code { width: 130px; font-size: 11px; }
+    .data-table .col-est { min-width: 140px; max-width: 200px; white-space: normal; word-break: break-word; }
+    .data-table .col-ifsc { width: 100px; font-size: 11px; }
+    .data-table .col-acct { width: 130px; font-size: 11px; }
+    .data-table .col-amount { width: 85px; text-align: right; white-space: nowrap; }
+    .data-table .col-total { width: 100px; text-align: right; white-space: nowrap; font-weight: 700; }
+    .data-table .col-status { width: 90px; }
+    .data-table .col-8f { width: 60px; text-align: center; }
+    .data-table .col-8f-no { width: 80px; }
+    .data-table .col-8f-date { width: 110px; }
+    .data-table .col-period { width: 140px; }
+    .data-table .col-bank { min-width: 120px; }
+    .data-table .col-branch { min-width: 100px; }
+    .data-table .col-aeo { width: 120px; max-width: 150px; white-space: normal; word-break: break-word; }
+    .data-table input, .data-table textarea {
+      width: 100%; padding: 4px 6px; border: 1px solid #d0d4dc;
+      border-radius: 4px; font-size: 11px; font-family: inherit; box-sizing: border-box;
+    }
+    .data-table textarea { resize: vertical; min-height: 30px; }
+    .data-table tr.editing td { background: #eef0ff; }
+    .row-actions { display: flex; gap: 4px; }
+    .row-actions button {
+      padding: 4px 8px; border: none; border-radius: 4px;
+      font-size: 10px; font-weight: 600; cursor: pointer; color: #fff;
+    }
+    .btn-edit { background: #667eea; }
+    .btn-edit:hover { background: #5568d3; }
+    .btn-save { background: #1f8a4c; }
+    .btn-save:hover { background: #187a40; }
+    .btn-cancel { background: #6b7280; }
+    .btn-cancel:hover { background: #4b5563; }
+    .btn-delete { background: #c0392b; }
+    .btn-delete:hover { background: #a02e22; }
+    .status-pill {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 10px; font-weight: 600;
+    }
+    .status-pill.paid { background: #d4edda; color: #1f8a4c; }
+    .status-pill.pending { background: #fff3cd; color: #856404; }
+    .status-pill.issued { background: #cce5ff; color: #004085; }
+    .count-badge {
+      display: inline-block; background: #eef0ff; color: #4c51bf;
+      padding: 2px 8px; border-radius: 999px; font-size: 10px;
+      font-weight: 600; margin-left: 6px;
+    }
+    .empty-row { padding: 30px; text-align: center; color: #888; font-size: 12px; }
+
+    .list-toolbar {
+      display: flex; gap: 8px; align-items: center; padding: 10px 16px;
+      background: #f8f9fc; border-bottom: 1px solid #e8ebf0;
+      flex-wrap: wrap;
+    }
+    .list-toolbar input, .list-toolbar select {
+      padding: 5px 8px; border: 1px solid #d0d4dc; border-radius: 4px;
+      font-size: 11px; font-family: inherit; min-width: 140px;
+    }
+    .list-toolbar button {
+      padding: 5px 12px; background: #667eea; color: #fff; border: none;
+      border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;
+    }
+    .list-toolbar button:hover { background: #5568d3; }
+    .list-toolbar .btn-pdf { background: #1f8a4c; }
+    .list-toolbar .btn-pdf:hover { background: #187a40; }
+    .list-toolbar .count { color: #6b7280; font-size: 11px; margin-left: auto; }
+
+    .action-bar {
+      background: #f8f9fc; padding: 10px 16px;
+      border-top: 1px solid #e8ebf0;
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .btn {
+      padding: 7px 20px; border: none; border-radius: 5px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .btn-secondary { background: #e8ebf0; color: #333; }
+    .btn-secondary:hover { background: #d8dce4; }
+    .btn-primary { background: #667eea; color: #fff; }
+    .btn-primary:hover { background: #5568d3; }
+
+    .status { margin-top: 10px; font-size: 12px; text-align: right; min-height: 16px; }
+    .status.ok { color: #1f8a4c; }
+    .status.err { color: #c0392b; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="nav"><a href="/admin">← Back to users</a></p>
+
+    <!-- BANK DETAILS -->
+    <form id="bankForm" autocomplete="off">
+      <div class="section">
+        <div class="section-header">Add Bank Details</div>
+        <div class="section-body">
+          <div class="cards">
+
+            <!-- ===== CARD 1: ESTABLISHMENT ===== -->
+            <div class="card">
+              <div class="card-title">Establishment</div>
+              <div class="field">
+                <label>Code</label>
+                <div class="dropdown">
+                  <input type="text" id="estSearch" placeholder="Type code or name..." />
+                  <input type="hidden" id="establishment_id" name="establishment_id" required />
+                  <div class="dropdown-menu" id="dropdown"></div>
+                </div>
+              </div>
+              <div class="field">
+                <label>Name</label>
+                <input type="text" id="estName" readonly placeholder="(auto-filled after selection)" />
+              </div>
+              <div class="field">
+                <label>AEO</label>
+                <input type="text" id="aeo" name="aeo" readonly placeholder="(auto-filled from establishment)" />
+              </div>
+              <div id="existingAccountsContainer"></div>
+            </div>
+
+            <!-- ===== CARD 2: BANK ===== -->
+            <div class="card">
+              <div class="card-title">Bank</div>
+              <div class="field">
+                <label>IFSC</label>
+                <div>
+                  <input type="text" id="ifsc" name="ifsc" placeholder="SBIN0001234" maxlength="11" required />
+                  <div id="ifscFeedback" class="ifsc-feedback"></div>
+                </div>
+              </div>
+              <div class="field">
+                <label>A/c No</label>
+                <input type="text" id="account_number" name="account_number" placeholder="9-18 digits" required />
+              </div>
+              <div class="field">
+                <label>Bank</label>
+                <input type="text" id="bank_name" name="bank_name" placeholder="(auto-filled from IFSC)" required />
+              </div>
+              <div class="field">
+                <label>Branch</label>
+                <input type="text" id="branch" name="branch" readonly placeholder="(auto-filled)" />
+              </div>
+              <div class="field address">
+                <label>Address</label>
+                <textarea id="address" name="address" rows="2" readonly placeholder="(auto-filled from IFSC or existing record)"></textarea>
+              </div>
+            </div>
+
+            <!-- ===== CARD 3: PAYMENT ===== -->
+            <div class="card">
+              <div class="card-title">Payment</div>
+              <div class="field">
+                <label>Period</label>
+                <div class="period-inline">
+                  <input type="date" id="period_from" />
+                  <span>to</span>
+                  <input type="date" id="period_to" />
+                </div>
+                <input type="hidden" id="period" name="period" />
+              </div>
+              <div class="field">
+                <label>8F</label>
+                <div class="eight-f-inline">
+                  <div class="ck"><label><input type="checkbox" id="eight_f_issued" name="eight_f_issued" /> Issued</label></div>
+                  <input type="text" id="eight_f_number" name="eight_f_number" placeholder="No" maxlength="20" />
+                  <input type="date" id="eight_f_issued_date" name="eight_f_issued_date" />
+                </div>
+              </div>
+              <div class="field">
+                <label>Status</label>
+                <div class="status-inline">
+                  <select id="payment_status" name="payment_status">
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                  <span>on</span>
+                  <input type="date" id="payment_date" name="payment_date" />
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- EPFO PAYMENT -->
+      <div class="section">
+        <div class="section-header">EPFO Payment Details</div>
+        <div class="section-body" style="padding: 0;">
+          <table class="epfo-table">
+            <thead>
+              <tr>
+                <th>Section</th>
+                <th>A/c 1</th><th>A/c 2</th><th>A/c 10</th><th>A/c 21</th><th>A/c 22</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="epfo-section-label">7A</span></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7a_ac1" data-section="7a" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7a_ac2" data-section="7a" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7a_ac10" data-section="7a" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7a_ac21" data-section="7a" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7a_ac22" data-section="7a" /></td>
+                <td><span class="epfo-total" id="total_7a">₹0.00</span></td>
+              </tr>
+              <tr>
+                <td><span class="epfo-section-label">7Q <small>of 7A</small></span></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7q_7a_ac1" data-section="7q_7a" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7q_7a_ac2" data-section="7q_7a" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7q_7a_ac10" data-section="7q_7a" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7q_7a_ac21" data-section="7q_7a" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7q_7a_ac22" data-section="7q_7a" /></td>
+                <td><span class="epfo-total" id="total_7q_7a">₹0.00</span></td>
+              </tr>
+              <tr>
+                <td><span class="epfo-section-label">14B</span></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_14b_ac1" data-section="14b" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_14b_ac2" data-section="14b" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_14b_ac10" data-section="14b" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_14b_ac21" data-section="14b" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_14b_ac22" data-section="14b" /></td>
+                <td><span class="epfo-total" id="total_14b">₹0.00</span></td>
+              </tr>
+              <tr>
+                <td><span class="epfo-section-label">7Q <small>of 14B</small></span></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7q_14b_ac1" data-section="7q_14b" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7q_14b_ac2" data-section="7q_14b" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7q_14b_ac10" data-section="7q_14b" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7q_14b_ac21" data-section="7q_14b" /></td>
+                <td><input class="epfo-input" type="number" step="0.01" name="amount_7q_14b_ac22" data-section="7q_14b" /></td>
+                <td><span class="epfo-total" id="total_7q_14b">₹0.00</span></td>
+              </tr>
+              <tr class="grand">
+                <td style="padding-left:12px;">GRAND TOTAL</td>
+                <td><span class="epfo-grand-total" id="grand_ac1">₹0.00</span></td>
+                <td><span class="epfo-grand-total" id="grand_ac2">₹0.00</span></td>
+                <td><span class="epfo-grand-total" id="grand_ac10">₹0.00</span></td>
+                <td><span class="epfo-grand-total" id="grand_ac21">₹0.00</span></td>
+                <td><span class="epfo-grand-total" id="grand_ac22">₹0.00</span></td>
+                <td><span class="epfo-grand-total" id="total_amount_display">₹0.00</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <input type="hidden" id="total_amount" name="total_amount" />
+        <input type="hidden" id="code" name="code" />
+        <input type="hidden" id="city1" name="city1" />
+        <input type="hidden" id="city2" name="city2" />
+        <input type="hidden" id="district" name="district" />
+        <input type="hidden" id="state" name="state" />
+        <input type="hidden" id="phone" name="phone" />
+        <input type="hidden" id="contact" name="contact" />
+        <div class="action-bar">
+          <button type="button" class="btn btn-secondary" id="resetBtn">Reset</button>
+          <button type="button" class="btn btn-secondary" id="cancelBtn" style="display:none;">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveBtn">Save</button>
+        </div>
+        <p id="status" class="status" style="padding: 0 16px 10px;"></p>
+      </div>
+    </form>
+
+    <!-- TABS + DATA TABLES -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="bank-accounts">Entered Bank Accounts <span class="count-badge" id="totalCount">0</span></button>
+      <button class="tab-btn" data-tab="epfo-8f">8F Issued <span class="count-badge" id="eightFCount">0</span></button>
+    </div>
+
+    <!-- Bank Accounts Tab -->
+    <div class="section tab-content" data-tab-content="bank-accounts">
+      <div class="section-header">Entered Bank Accounts</div>
+      <div class="list-toolbar">
+        <select id="filterEst">
+          <option value="">All Establishments</option>
+        </select>
+        <input type="search" id="listSearch" placeholder="Filter by est code, IFSC, bank..." />
+        <select id="bankSortBy">
+          <option value="est_id">Sort: Est Code</option>
+          <option value="est_name">Sort: Establishment</option>
+          <option value="ifsc">Sort: IFSC</option>
+          <option value="bank">Sort: Bank</option>
+          <option value="branch">Sort: Branch</option>
+          <option value="amount">Sort: Amount</option>
+          <option value="aeo">Sort: AEO</option>
+          <option value="period">Sort: Period</option>
+        </select>
+        <button id="refreshList">Refresh</button>
+        <button class="btn-pdf" id="exportBankPdf">Export PDF</button>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="col-id">#</th>
+              <th class="col-code">Est Code</th>
+              <th class="col-est">Establishment</th>
+              <th class="col-aeo">AEO</th>
+              <th class="col-ifsc">IFSC</th>
+              <th class="col-bank">Bank</th>
+              <th class="col-branch">Branch</th>
+              <th class="col-acct">Account No</th>
+              <th class="col-period">Period</th>
+              <th class="col-total">Total</th>
+              <th class="col-status">Payment</th>
+              <th class="col-8f">8F</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="bankRows"></tbody>
+        </table>
+        <div class="empty-row" id="emptyRow" style="display:none;">No bank accounts yet.</div>
+      </div>
+    </div>
+
+    <!-- 8F Issued Tab -->
+    <div class="section tab-content" data-tab-content="epfo-8f" style="display:none;">
+      <div class="section-header">8F Issued Records</div>
+      <div class="list-toolbar">
+        <input type="search" id="eightFSearch" placeholder="Filter by est code, name, AEO, IFSC..." />
+        <select id="eightFSortBy">
+          <option value="est_id">Sort: Est Code</option>
+          <option value="est_name">Sort: Establishment</option>
+          <option value="ifsc">Sort: IFSC</option>
+          <option value="bank">Sort: Bank</option>
+          <option value="branch">Sort: Branch</option>
+          <option value="amount">Sort: Amount</option>
+          <option value="aeo">Sort: AEO</option>
+          <option value="period">Sort: Period</option>
+        </select>
+        <button id="refreshEightF">Refresh</button>
+        <button class="btn-pdf" id="exportEightFPdf">Export PDF</button>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="col-id">#</th>
+              <th class="col-code">Est Code</th>
+              <th class="col-est">Establishment</th>
+              <th class="col-aeo">AEO</th>
+              <th class="col-period">Period</th>
+              <th class="col-amount">7A</th>
+              <th class="col-amount">7Q (7A)</th>
+              <th class="col-amount">14B</th>
+              <th class="col-amount">7Q (14B)</th>
+              <th class="col-total">Grand Total</th>
+              <th class="col-8f-no">8F No</th>
+              <th class="col-8f-date">8F Date</th>
+              <th class="col-bank">Bank</th>
+              <th class="col-ifsc">IFSC</th>
+              <th class="col-acct">Account No</th>
+            </tr>
+          </thead>
+          <tbody id="eightFRows"></tbody>
+        </table>
+        <div class="empty-row" id="emptyEightFRow" style="display:none;">No 8F records yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // DOM REFERENCES
+    // ============================================================
+    const form = document.getElementById('bankForm');
+    const searchEl = document.getElementById('estSearch');
+    const nameEl = document.getElementById('estName');
+    const hiddenEl = document.getElementById('establishment_id');
+    const menuEl = document.getElementById('dropdown');
+    const status = document.getElementById('status');
+    const ifscEl = document.getElementById('ifsc');
+    const ifscFb = document.getElementById('ifscFeedback');
+    const bankNameEl = document.getElementById('bank_name');
+    const addressEl = document.getElementById('address');
+    const eightFCheckbox = document.getElementById('eight_f_issued');
+    const periodFromEl = document.getElementById('period_from');
+    const periodToEl = document.getElementById('period_to');
+    const periodHiddenEl = document.getElementById('period');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const saveBtn = document.getElementById('saveBtn');
+
+    const sectionNames = ['7a', '7q_7a', '14b', '7q_14b'];
+    const acKeys = ['ac1', 'ac2', 'ac10', 'ac21', 'ac22'];
+
+    // ============================================================
+    // STATE
+    // ============================================================
+    let allEsts = [];
+    let filtered = [];
+    let activeIndex = -1;
+    let ifscTimer = null;
+    let editingId = null;
+    let bankAccounts = [];
+    let eightFRecords = [];
+
+    // ============================================================
+    // HELPERS
+    // ============================================================
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+    function fmtMoney(v) {
+      if (v == null || v === '' || isNaN(Number(v))) return '₹0.00';
+      return '₹' + Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // ============================================================
+    // ESTABLISHMENT SEARCH
+    // ============================================================
+    function renderMenu() {
+      if (filtered.length === 0) {
+        menuEl.innerHTML = '<div class="dropdown-empty">No matching establishment</div>';
+        return;
+      }
+      menuEl.innerHTML = filtered.slice(0, 50).map((e, i) => `
+        <div class="dropdown-item${i === activeIndex ? ' active' : ''}" data-id="${e.id}" data-idx="${i}">
+          <span class="code">${escapeHtml(e.est_id)}</span>
+          <span class="name">${escapeHtml(e.est_name)}</span>
+        </div>
+      `).join('');
+    }
+    function filterEsts(q) {
+      const query = (q || '').trim().toLowerCase();
+      if (!query) { filtered = []; activeIndex = -1; renderMenu(); return; }
+      filtered = allEsts.filter(e =>
+        (e.est_id || '').toLowerCase().includes(query) ||
+        (e.est_name || '').toLowerCase().includes(query)
+      );
+      activeIndex = filtered.length > 0 ? 0 : -1;
+      renderMenu();
+    }
+    async function loadAllEsts() {
+      try {
+        const res = await fetch('/api/establishments?limit=all');
+        allEsts = await res.json();
+      } catch (e) {
+        console.error('Failed to load establishments', e);
+      }
+    }
+    searchEl.addEventListener('focus', () => {
+      if (filtered.length > 0) menuEl.classList.add('open');
+    });
+    searchEl.addEventListener('input', () => {
+      hiddenEl.value = '';
+      nameEl.value = '';
+      clearExistingAccounts();
+      if (editingId === null) {
+        ifscEl.value = '';
+        bankNameEl.value = '';
+        addressEl.value = '';
+        document.getElementById('account_number').value = '';
+        for (const id of ['branch','city1','city2','district','state','phone','contact']) {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        }
+        ifscFb.textContent = '';
+        ifscFb.className = 'ifsc-feedback';
+      }
+      menuEl.classList.add('open');
+      filterEsts(searchEl.value);
+    });
+    searchEl.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (filtered.length === 0) return;
+        activeIndex = Math.min(activeIndex + 1, filtered.length - 1);
+        renderMenu();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (filtered.length === 0) return;
+        activeIndex = Math.max(activeIndex - 1, 0);
+        renderMenu();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (activeIndex >= 0 && filtered[activeIndex]) selectItem(filtered[activeIndex]);
+      } else if (e.key === 'Escape') {
+        menuEl.classList.remove('open');
+      }
+    });
+    menuEl.addEventListener('mousedown', (e) => {
+      const item = e.target.closest('.dropdown-item');
+      if (!item) return;
+      const idx = parseInt(item.dataset.idx, 10);
+      if (filtered[idx]) selectItem(filtered[idx]);
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.dropdown')) menuEl.classList.remove('open');
+    });
+
+    function selectItem(e) {
+      hiddenEl.value = e.id;
+      searchEl.value = e.est_id;
+      nameEl.value = e.est_name;
+      document.getElementById('aeo').value = e.aeo || '';
+      menuEl.classList.remove('open');
+      showExistingAccounts(e.id, e.est_id);
+      autofillFromExisting(e.id);
+    }
+
+    function clearExistingAccounts() {
+      const c = document.getElementById('existingAccountsContainer');
+      if (c) c.innerHTML = '';
+    }
+    function showExistingAccounts(estId, estCode) {
+      const c = document.getElementById('existingAccountsContainer');
+      c.innerHTML = '';
+      const matching = bankAccounts.filter(u => u.establishment_id === estId);
+      if (matching.length === 0) return;
+      const box = document.createElement('div');
+      box.className = 'existing-accounts';
+      const items = matching.map(u =>
+        `<li>${escapeHtml(u.bank_name || '')} — ${escapeHtml(u.ifsc)} — A/c ${escapeHtml(u.account_number)}${u.branch ? ' (' + escapeHtml(u.branch) + ')' : ''}</li>`
+      ).join('');
+      box.innerHTML = `<strong>${matching.length} existing bank account${matching.length > 1 ? 's' : ''} for ${escapeHtml(estCode)}:</strong><ul>${items}</ul>`;
+      c.appendChild(box);
+    }
+    async function autofillFromExisting(estId) {
+      const existing = bankAccounts.filter(u => u.establishment_id === estId);
+      if (existing.length === 0) return;
+      const latest = existing.slice().sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+      ifscEl.value = latest.ifsc || '';
+      bankNameEl.value = latest.bank_name || '';
+      addressEl.value = [latest.branch, latest.address, latest.city1, latest.city2, latest.district, latest.state].filter(Boolean).join(', ');
+      document.getElementById('account_number').value = latest.account_number || '';
+      for (const [id, key] of [['branch','branch'],['city1','city1'],['city2','city2'],['district','district'],['state','state'],['phone','phone'],['contact','contact']]) {
+        const el = document.getElementById(id);
+        if (el) el.value = latest[key] || '';
+      }
+      setPeriod(latest.period || '');
+      document.getElementById('payment_status').value = latest.payment_status || 'pending';
+      document.getElementById('payment_date').value = latest.payment_date || '';
+      document.getElementById('aeo').value = latest.aeo || '';
+      for (const sec of sectionNames) {
+        for (const ac of acKeys) {
+          const el = document.querySelector(`[name="amount_${sec}_${ac}"]`);
+          if (el) el.value = latest[`amount_${sec}_${ac}`] != null ? latest[`amount_${sec}_${ac}`] : '';
+        }
+      }
+      recalcTotal();
+      eightFCheckbox.checked = !!latest.eight_f_issued;
+      document.getElementById('eight_f_number').value = latest.eight_f_number || '';
+      document.getElementById('eight_f_issued_date').value = latest.eight_f_issued_date || '';
+      ifscFb.textContent = `Auto-filled from existing record (${existing.length} total)`;
+      ifscFb.className = 'ifsc-feedback ok';
+    }
+
+    // ============================================================
+    // IFSC AUTO-LOOKUP
+    // ============================================================
+    ifscEl.addEventListener('input', () => {
+      ifscFb.textContent = '';
+      ifscFb.className = 'ifsc-feedback';
+      const code = ifscEl.value.trim().toUpperCase();
+      ifscEl.value = code;
+      if (code.length !== 11) {
+        clearIfscData();
+        return;
+      }
+      ifscFb.textContent = 'Looking up IFSC...';
+      ifscFb.className = 'ifsc-feedback loading';
+      clearTimeout(ifscTimer);
+      ifscTimer = setTimeout(async () => {
+        try {
+          const res = await fetch('/api/ifsc/' + encodeURIComponent(code));
+          const data = await res.json();
+          if (!res.ok) {
+            ifscFb.textContent = data.message || 'IFSC lookup failed';
+            ifscFb.className = 'ifsc-feedback err';
+            return;
+          }
+          bankNameEl.value = data.bank || '';
+          const parts = [data.branch, data.address, data.city1, data.city2, data.district, data.state].filter(Boolean);
+          addressEl.value = parts.join(', ');
+          for (const [id, key] of [
+            ['branch','branch'], ['city1','city1'], ['city2','city2'],
+            ['district','district'], ['state','state'], ['phone','phone'], ['contact','contact']
+          ]) {
+            const el = document.getElementById(id);
+            if (el) el.value = data[key] || '';
+          }
+          ifscFb.textContent = `Found: ${data.bank} - ${data.branch}`;
+          ifscFb.className = 'ifsc-feedback ok';
+        } catch (err) {
+          ifscFb.textContent = 'Network error during IFSC lookup';
+          ifscFb.className = 'ifsc-feedback err';
+        }
+      }, 300);
+    });
+    function clearIfscData() {
+      bankNameEl.value = '';
+      addressEl.value = '';
+      for (const id of ['branch','city1','city2','district','state','phone','contact']) {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      }
+    }
+
+    // ============================================================
+    // PERIOD (from/to) <-> hidden "period" field
+    // ============================================================
+    function setPeriod(p) {
+      periodHiddenEl.value = p || '';
+      if (!p) { periodFromEl.value = ''; periodToEl.value = ''; return; }
+      // Accept "2026-04-15", "2026-04-15 to 2026-09-15", "Apr-2026", "Apr-2026 to Sep-2026", "15 Apr 2026"
+      const parts = p.split(/\s+to\s+/i);
+      const fromVal = toDateInput(parts[0].trim());
+      const toVal = toDateInput(parts[1] ? parts[1].trim() : '');
+      periodFromEl.value = fromVal;
+      periodToEl.value = toVal;
+    }
+    function toDateInput(s) {
+      if (!s) return '';
+      s = String(s).trim();
+      // Already YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      // YYYY-MM
+      if (/^\d{4}-\d{2}$/.test(s)) return `${s}-01`;
+      const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+      const parts = s.split(/[-\s,]+/).filter(Boolean);
+      // "15 Apr 2026" or "15-Apr-2026" or "15 April 2026" -> ["15", "Apr", "2026"]
+      if (parts.length >= 3) {
+        const d = parseInt(parts[0], 10);
+        const m = months.indexOf(parts[1].toLowerCase().substring(0, 3));
+        const y = parseInt(parts[2], 10);
+        if (d >= 1 && d <= 31 && m >= 0 && y >= 1900 && y <= 2100) {
+          return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        }
+      }
+      // "Apr 2026" or "Apr-2026" -> ["Apr", "2026"]
+      if (parts.length >= 2) {
+        const m = months.indexOf(parts[0].toLowerCase().substring(0, 3));
+        const y = parseInt(parts[parts.length - 1], 10);
+        if (m >= 0 && y >= 1900 && y <= 2100) {
+          return `${y}-${String(m + 1).padStart(2, '0')}-01`;
+        }
+      }
+      return '';
+    }
+    function formatDate(yyyymmdd) {
+      if (!yyyymmdd) return '';
+      // YYYY-MM-DD -> "15 Apr 2026"
+      if (/^\d{4}-\d{2}-\d{2}$/.test(yyyymmdd)) {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const [y, m, d] = yyyymmdd.split('-');
+        return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
+      }
+      // YYYY-MM -> "Apr 2026"
+      if (/^\d{4}-\d{2}$/.test(yyyymmdd)) {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const [y, m] = yyyymmdd.split('-');
+        return `${months[parseInt(m, 10) - 1]} ${y}`;
+      }
+      // Already formatted (e.g. "15 Apr 2026") - pass through
+      return yyyymmdd;
+    }
+    function syncPeriod() {
+      const from = periodFromEl.value;
+      const to = periodToEl.value;
+      if (from && to) periodHiddenEl.value = `${formatDate(from)} to ${formatDate(to)}`;
+      else if (from) periodHiddenEl.value = formatDate(from);
+      else if (to) periodHiddenEl.value = formatDate(to);
+      else periodHiddenEl.value = '';
+    }
+    periodFromEl.addEventListener('change', syncPeriod);
+    periodToEl.addEventListener('change', syncPeriod);
+
+    // ============================================================
+    // EPFO TOTALS
+    // ============================================================
+    function recalcTotal() {
+      let grand = 0;
+      const colTotals = { ac1: 0, ac2: 0, ac10: 0, ac21: 0, ac22: 0 };
+      for (const sec of sectionNames) {
+        let sTotal = 0;
+        for (const ac of acKeys) {
+          const el = document.querySelector(`[name="amount_${sec}_${ac}"]`);
+          const v = parseFloat(el && el.value) || 0;
+          sTotal += v;
+          colTotals[ac] += v;
+        }
+        const totalEl = document.getElementById(`total_${sec}`);
+        if (totalEl) totalEl.textContent = fmtMoney(sTotal);
+        grand += sTotal;
+      }
+      for (const ac of acKeys) {
+        const el = document.getElementById(`grand_${ac}`);
+        if (el) el.textContent = fmtMoney(colTotals[ac]);
+      }
+      document.getElementById('total_amount_display').textContent = fmtMoney(grand);
+      document.getElementById('total_amount').value = grand.toFixed(2);
+    }
+    document.querySelectorAll('.epfo-input').forEach(el => {
+      el.addEventListener('input', recalcTotal);
+    });
+
+    // ============================================================
+    // FORM SUBMIT
+    // ============================================================
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!hiddenEl.value) {
+        status.textContent = 'Please select an establishment from the dropdown';
+        status.className = 'status err';
+        return;
+      }
+      syncPeriod();
+      recalcTotal();
+      status.textContent = 'Saving...';
+      status.className = 'status';
+      const data = Object.fromEntries(new FormData(form).entries());
+      data.eight_f_issued = eightFCheckbox.checked;
+      data.est_id = searchEl.value;
+      data.est_name = nameEl.value;
+      const url = editingId ? '/api/bank-accounts/' + editingId : '/api/bank-accounts';
+      const method = editingId ? 'PUT' : 'POST';
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const body = await res.json();
+        if (res.ok) {
+          status.textContent = body.message;
+          status.className = 'status ok';
+          resetForm();
+          await loadBankAccounts();
+          await loadEightFRecords();
+        } else {
+          status.textContent = body.message || 'Save failed';
+          status.className = 'status err';
+        }
+      } catch (err) {
+        status.textContent = 'Network error';
+        status.className = 'status err';
+      }
+    });
+
+    function resetForm() {
+      form.reset();
+      clearIfscData();
+      hiddenEl.value = '';
+      searchEl.value = '';
+      nameEl.value = '';
+      ifscFb.textContent = '';
+      ifscFb.className = 'ifsc-feedback';
+      clearExistingAccounts();
+      editingId = null;
+      saveBtn.textContent = 'Save';
+      cancelBtn.style.display = 'none';
+      recalcTotal();
+      status.textContent = '';
+      status.className = 'status';
+      document.getElementById('aeo').value = '';
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', resetForm);
+    cancelBtn.addEventListener('click', resetForm);
+
+    // ============================================================
+    // BANK ACCOUNTS LIST
+    // ============================================================
+    const listSearch = document.getElementById('listSearch');
+    const bankRowsEl = document.getElementById('bankRows');
+    const emptyRowEl = document.getElementById('emptyRow');
+
+    function renderRows() {
+      const q = listSearch.value.trim().toLowerCase();
+      const estFilter = document.getElementById('filterEst').value;
+      let rows = estFilter
+        ? bankAccounts.filter(u => u.establishment_id === parseInt(estFilter, 10))
+        : bankAccounts.slice();
+      if (q) {
+        rows = rows.filter(u =>
+          (u.est_id || '').toLowerCase().includes(q) ||
+          (u.est_name || '').toLowerCase().includes(q) ||
+          (u.ifsc || '').toLowerCase().includes(q) ||
+          (u.bank_name || '').toLowerCase().includes(q) ||
+          (u.account_number || '').toLowerCase().includes(q) ||
+          (u.branch || '').toLowerCase().includes(q));
+      }
+      document.getElementById('totalCount').textContent = rows.length;
+      if (rows.length === 0) {
+        bankRowsEl.innerHTML = '';
+        emptyRowEl.style.display = 'block';
+        return;
+      }
+      emptyRowEl.style.display = 'none';
+      bankRowsEl.innerHTML = rows.map(u => {
+        const isEditing = editingId === u.id;
+        return `
+          <tr class="${isEditing ? 'editing' : ''}" data-id="${u.id}">
+            <td class="col-id">${u.id}</td>
+            <td class="col-code">${escapeHtml(u.est_id)}</td>
+            <td class="col-est">${escapeHtml(u.est_name)}</td>
+            <td class="col-aeo">${isEditing
+                ? `<input data-field="aeo" value="${escapeHtml(u.aeo || '')}" />`
+                : escapeHtml(u.aeo || '—')}</td>
+            <td class="col-ifsc">${isEditing
+                ? `<input data-field="ifsc" value="${escapeHtml(u.ifsc || '')}" maxlength="11" />`
+                : escapeHtml(u.ifsc)}</td>
+            <td class="col-bank">${isEditing
+                ? `<input data-field="bank_name" value="${escapeHtml(u.bank_name || '')}" />`
+                : escapeHtml(u.bank_name || '—')}</td>
+            <td class="col-branch">${isEditing
+                ? `<input data-field="branch" value="${escapeHtml(u.branch || '')}" />`
+                : escapeHtml(u.branch || '—')}</td>
+            <td class="col-acct">${isEditing
+                ? `<input data-field="account_number" value="${escapeHtml(u.account_number || '')}" />`
+                : escapeHtml(u.account_number)}</td>
+            <td class="col-period">${isEditing
+                ? `<input data-field="period" value="${escapeHtml(u.period || '')}" />`
+                : escapeHtml(u.period || '—')}</td>
+            <td class="col-total">${fmtMoney(u.total_amount)}</td>
+            <td class="col-status"><span class="status-pill ${u.payment_status || 'pending'}">${escapeHtml((u.payment_status || 'pending').toUpperCase())}</span></td>
+            <td class="col-8f">${u.eight_f_issued ? `<span class="status-pill issued">8F</span>` : '—'}</td>
+            <td>
+              <div class="row-actions">
+                ${isEditing
+                  ? `<button class="btn-save" data-action="save">Save</button>
+                     <button class="btn-cancel" data-action="cancel">Cancel</button>`
+                  : `<button class="btn-edit" data-action="edit">Edit</button>
+                     <button class="btn-delete" data-action="delete">Delete</button>`}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function loadBankAccounts() {
+      const res = await fetch('/api/bank-accounts');
+      bankAccounts = await res.json();
+      const filterEl = document.getElementById('filterEst');
+      const currentVal = filterEl.value;
+      const groups = new Map();
+      bankAccounts.forEach(u => {
+        if (!groups.has(u.establishment_id)) {
+          groups.set(u.establishment_id, { id: u.establishment_id, est_id: u.est_id, est_name: u.est_name, count: 0 });
+        }
+        groups.get(u.establishment_id).count++;
+      });
+      const sorted = Array.from(groups.values()).sort((a, b) => b.count - a.count);
+      filterEl.innerHTML = '<option value="">All Establishments (' + bankAccounts.length + ')</option>' +
+        sorted.map(c => `<option value="${c.id}">${escapeHtml(c.est_id)} — ${escapeHtml(c.est_name)} (${c.count})</option>`).join('');
+      filterEl.value = currentVal;
+      renderRows();
+    }
+
+    bankRowsEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const tr = btn.closest('tr');
+      const id = parseInt(tr.dataset.id, 10);
+      const action = btn.dataset.action;
+      if (action === 'edit') {
+        const record = bankAccounts.find(x => x.id === id);
+        if (record) {
+          hiddenEl.value = record.establishment_id;
+          searchEl.value = record.est_id;
+          nameEl.value = record.est_name;
+          ifscEl.value = record.ifsc || '';
+          bankNameEl.value = record.bank_name || '';
+          addressEl.value = [record.branch, record.address, record.city1, record.city2, record.district, record.state].filter(Boolean).join(', ');
+          document.getElementById('account_number').value = record.account_number || '';
+          for (const [id2, key] of [['branch','branch'],['city1','city1'],['city2','city2'],['district','district'],['state','state'],['phone','phone'],['contact','contact']]) {
+            const el = document.getElementById(id2);
+            if (el) el.value = record[key] || '';
+          }
+          setPeriod(record.period || '');
+          document.getElementById('payment_status').value = record.payment_status || 'pending';
+          document.getElementById('payment_date').value = record.payment_date || '';
+          document.getElementById('aeo').value = record.aeo || '';
+          for (const sec of sectionNames) {
+            for (const ac of acKeys) {
+              const el = document.querySelector(`[name="amount_${sec}_${ac}"]`);
+              if (el) el.value = record[`amount_${sec}_${ac}`] != null ? record[`amount_${sec}_${ac}`] : '';
+            }
+          }
+          recalcTotal();
+          eightFCheckbox.checked = !!record.eight_f_issued;
+          document.getElementById('eight_f_number').value = record.eight_f_number || '';
+          document.getElementById('eight_f_issued_date').value = record.eight_f_issued_date || '';
+          editingId = id;
+          saveBtn.textContent = 'Update';
+          cancelBtn.style.display = 'inline-block';
+        }
+        renderRows();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (action === 'cancel') {
+        editingId = null;
+        saveBtn.textContent = 'Save';
+        cancelBtn.style.display = 'none';
+        renderRows();
+      } else if (action === 'delete') {
+        if (!confirm('Delete this bank account?')) return;
+        const res = await fetch('/api/bank-accounts/' + id, { method: 'DELETE' });
+        const body = await res.json();
+        if (res.ok) {
+          status.textContent = body.message;
+          status.className = 'status ok';
+        } else {
+          status.textContent = body.message || 'Delete failed';
+          status.className = 'status err';
+        }
+        await loadBankAccounts();
+        await loadEightFRecords();
+      } else if (action === 'save') {
+        const payload = {};
+        tr.querySelectorAll('[data-field]').forEach(inp => {
+          payload[inp.dataset.field] = inp.value.trim();
+        });
+        // Pull all current form fields for completeness
+        payload.account_number = payload.account_number || '';
+        payload.ifsc = payload.ifsc || '';
+        payload.bank_name = payload.bank_name || '';
+        payload.branch = payload.branch || '';
+        const res = await fetch('/api/bank-accounts/' + id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const body = await res.json();
+        if (res.ok) {
+          status.textContent = body.message;
+          status.className = 'status ok';
+          editingId = null;
+          saveBtn.textContent = 'Save';
+          cancelBtn.style.display = 'none';
+        } else {
+          status.textContent = body.message || 'Update failed';
+          status.className = 'status err';
+        }
+        await loadBankAccounts();
+        await loadEightFRecords();
+      }
+    });
+
+    listSearch.addEventListener('input', renderRows);
+    document.getElementById('filterEst').addEventListener('change', renderRows);
+    document.getElementById('refreshList').addEventListener('click', loadBankAccounts);
+
+    // ============================================================
+    // TAB SWITCHING
+    // ============================================================
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.tab;
+        document.querySelectorAll('.tab-content').forEach(c => {
+          c.style.display = c.dataset.tabContent === tab ? 'block' : 'none';
+        });
+        if (tab === 'epfo-8f') loadEightFRecords();
+      });
+    });
+
+    // ============================================================
+    // 8F RECORDS
+    // ============================================================
+    const eightFRowsEl = document.getElementById('eightFRows');
+    const emptyEightFRowEl = document.getElementById('emptyEightFRow');
+    const eightFSearchEl = document.getElementById('eightFSearch');
+
+    function renderEightFRows() {
+      const q = eightFSearchEl.value.trim().toLowerCase();
+      const rows = q
+        ? eightFRecords.filter(r =>
+            (r.est_id || '').toLowerCase().includes(q) ||
+            (r.est_name || '').toLowerCase().includes(q) ||
+            (r.aeo || '').toLowerCase().includes(q) ||
+            (r.ifsc || '').toLowerCase().includes(q) ||
+            (r.bank_name || '').toLowerCase().includes(q) ||
+            (r.eight_f_number || '').toLowerCase().includes(q))
+        : eightFRecords;
+      document.getElementById('eightFCount').textContent = rows.length;
+      if (rows.length === 0) {
+        eightFRowsEl.innerHTML = '';
+        emptyEightFRowEl.style.display = 'block';
+        return;
+      }
+      emptyEightFRowEl.style.display = 'none';
+      eightFRowsEl.innerHTML = rows.map(r => `
+        <tr>
+          <td class="col-id">${r.id}</td>
+          <td class="col-code">${escapeHtml(r.est_id || '')}</td>
+          <td class="col-est">${escapeHtml(r.est_name || '')}</td>
+          <td class="col-aeo">${escapeHtml(r.aeo || '—')}</td>
+          <td class="col-period">${escapeHtml(r.period || '—')}</td>
+          <td class="col-amount">${fmtMoney(r.amount_7a_total)}</td>
+          <td class="col-amount">${fmtMoney(r.amount_7q_7a_total)}</td>
+          <td class="col-amount">${fmtMoney(r.amount_14b_total)}</td>
+          <td class="col-amount">${fmtMoney(r.amount_7q_14b_total)}</td>
+          <td class="col-total">${fmtMoney(r.total_amount)}</td>
+          <td class="col-8f-no">${escapeHtml(r.eight_f_number || '—')}</td>
+          <td class="col-8f-date">${escapeHtml(r.eight_f_issued_date || '—')}</td>
+          <td class="col-bank">${escapeHtml(r.bank_name || '—')}</td>
+          <td class="col-ifsc">${escapeHtml(r.ifsc || '—')}</td>
+          <td class="col-acct">${escapeHtml(r.account_number || '—')}</td>
+        </tr>
+      `).join('');
+    }
+    async function loadEightFRecords() {
+      const res = await fetch('/api/epfo-8f');
+      eightFRecords = await res.json();
+      renderEightFRows();
+    }
+    eightFSearchEl.addEventListener('input', renderEightFRows);
+    document.getElementById('refreshEightF').addEventListener('click', loadEightFRecords);
+
+    // ============================================================
+    // PDF EXPORT
+    // ============================================================
+    function exportPdf(tab, sortBy) {
+      const url = `/api/export-pdf?tab=${encodeURIComponent(tab)}&sort=${encodeURIComponent(sortBy)}`;
+      window.open(url, '_blank');
+    }
+    document.getElementById('exportBankPdf').addEventListener('click', () => {
+      exportPdf('bank', document.getElementById('bankSortBy').value);
+    });
+    document.getElementById('exportEightFPdf').addEventListener('click', () => {
+      exportPdf('8f', document.getElementById('eightFSortBy').value);
+    });
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    (async function init() {
+      await loadAllEsts();
+      await loadBankAccounts();
+      await loadEightFRecords();
+      recalcTotal();
+    })();
+  </script>
+</body>
+</html>
