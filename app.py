@@ -12,13 +12,58 @@ from pathlib import Path
 from flask import Flask, Response, jsonify, render_template, request
 
 DB_PATH = os.getenv("ONBOARDING_DB", "logs/onboarding.sqlite3")
+TURSO_URL = os.getenv("TURSO_URL", "").strip()
+TURSO_TOKEN = os.getenv("TURSO_TOKEN", "").strip()
+USE_TURSO = bool(TURSO_URL and TURSO_TOKEN)
+
+# Lazy-loaded libsql module
+_libsql_mod = None
+
+
+def _get_libsql():
+    global _libsql_mod
+    if _libsql_mod is None:
+        try:
+            import libsql_experimental as mod
+        except ImportError:
+            import libsql as mod
+        _libsql_mod = mod
+    return _libsql_mod
 
 
 def _connect(db_path: str = DB_PATH):
-    """Open a SQLite connection with foreign keys enabled."""
+    """Open a database connection. Uses Turso (libSQL) if configured, else local SQLite."""
+    if USE_TURSO:
+        libsql = _get_libsql()
+        return libsql.connect(TURSO_URL, auth_token=TURSO_TOKEN)
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def _setup_row_factory(conn):
+    """Set up row factory for dict-like access. Only for local SQLite."""
+    if not USE_TURSO:
+        conn.row_factory = sqlite3.Row
+
+
+def _row_dict(row):
+    """Convert a database row to a dict. Works for sqlite3.Row, libSQL rows, and tuples."""
+    if row is None:
+        return None
+    if isinstance(row, dict):
+        return row
+    if hasattr(row, "keys"):
+        try:
+            return {k: row[k] for k in row.keys()}
+        except Exception:
+            return dict(row)
+    return row
+
+
+def _rows_list(rows):
+    """Convert a list of rows to a list of dicts."""
+    return [_row_dict(r) for r in rows]
 
 
 def _to_float(v):
@@ -29,9 +74,11 @@ def _to_float(v):
 
 
 def init_db(db_path: str = DB_PATH) -> None:
-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    if not USE_TURSO:
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     with _connect() as conn:
-        conn.execute("PRAGMA foreign_keys = ON")
+        if not USE_TURSO:
+            conn.execute("PRAGMA foreign_keys = ON")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS onboarded_users (
@@ -104,6 +151,10 @@ def onboard():
             conn.commit()
     except sqlite3.IntegrityError:
         return jsonify({"status": "error", "message": "Email already registered"}), 409
+    except Exception as e:
+        if "unique" in str(e).lower() or "integrity" in type(e).__name__.lower():
+            return jsonify({"status": "error", "message": "Email already registered"}), 409
+        raise
 
     return jsonify({"status": "ok", "message": "Account created"}), 201
 
@@ -111,7 +162,7 @@ def onboard():
 @app.route("/api/users", methods=["GET"])
 def list_users():
     with _connect() as conn:
-        conn.row_factory = sqlite3.Row
+        _setup_row_factory(conn)
         rows = conn.execute(
             "SELECT id, full_name, email, phone, date_of_birth, country, created_at "
             "FROM onboarded_users ORDER BY id DESC"
@@ -137,7 +188,7 @@ def list_establishments():
     limit_param = (request.args.get("limit") or "500").lower()
     limit = None if limit_param == "all" else min(max(int(limit_param), 1), 5000)
     with _connect() as conn:
-        conn.row_factory = sqlite3.Row
+        _setup_row_factory(conn)
         if search:
             like = f"%{search}%"
             sql = (
@@ -160,7 +211,7 @@ def list_establishments():
 def bank_accounts():
     if request.method == "GET":
         with _connect() as conn:
-            conn.row_factory = sqlite3.Row
+            _setup_row_factory(conn)
             rows = conn.execute(
                 """
                 SELECT b.id, b.establishment_id, b.account_number, b.ifsc,
@@ -204,7 +255,7 @@ def bank_accounts():
         return jsonify({"status": "error", "message": "Invalid establishment_id"}), 400
 
     with _connect() as conn:
-        conn.row_factory = sqlite3.Row
+        _setup_row_factory(conn)
         est = conn.execute("SELECT id FROM establishments WHERE id = ?", (est_id,)).fetchone()
         if est is None:
             return jsonify({"status": "error", "message": "Unknown establishment"}), 404
@@ -320,6 +371,13 @@ def bank_accounts():
         if "foreign key" in msg:
             return jsonify({"status": "error", "message": "Unknown establishment"}), 404
         return jsonify({"status": "error", "message": f"Integrity error: {e}"}), 400
+    except Exception as e:
+        msg = str(e).lower()
+        if "foreign key" in msg or "fk_" in msg:
+            return jsonify({"status": "error", "message": "Unknown establishment"}), 404
+        if "integrity" in type(e).__name__.lower() or "unique" in msg or "constraint" in msg:
+            return jsonify({"status": "error", "message": f"Integrity error: {e}"}), 400
+        raise
 
     return jsonify({"status": "ok", "message": "Bank details saved", "id": bank_id}), 201
 
@@ -327,7 +385,7 @@ def bank_accounts():
 @app.route("/api/bank-accounts/<int:bank_id>", methods=["GET", "PUT", "DELETE"])
 def bank_account_detail(bank_id: int):
     with _connect() as conn:
-        conn.row_factory = sqlite3.Row
+        _setup_row_factory(conn)
         if request.method == "GET":
             row = conn.execute(
                 """
@@ -507,7 +565,7 @@ def bank_account_detail(bank_id: int):
 @app.route("/api/epfo-8f", methods=["GET"])
 def list_epfo_8f():
     with _connect() as conn:
-        conn.row_factory = sqlite3.Row
+        _setup_row_factory(conn)
         # Columns must match the epfo_8f_records table order exactly.
         cols = "id, bank_account_id, establishment_id, est_id, est_name, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, city1, city2, district, state, phone, period, total_amount, payment_status, created_at, aeo, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total"
         rows = conn.execute(
@@ -610,7 +668,7 @@ def export_pdf():
     col, reverse = sort_map.get(sort_key, ("est_id", False))
 
     with _connect() as conn:
-        conn.row_factory = sqlite3.Row
+        _setup_row_factory(conn)
         if tab == "8f":
             # Reuse the same UNION query as list_epfo_8f
             cols = "id, est_id, est_name, aeo, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, period, total_amount, payment_status, amount_7a_total, amount_7q_7a_total, amount_14b_total, amount_7q_14b_total"
@@ -754,3 +812,4 @@ if __name__ == "__main__":
     init_db()
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
+
