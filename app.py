@@ -371,7 +371,19 @@ def _validate(payload: dict) -> str | None:
 
 @app.route("/", methods=["GET"])
 def index():
-    return render_template("onboarding.html")
+    # If user is already logged in, send them to the bank page
+    if session.get("user_id"):
+        return redirect("/bank")
+    # Otherwise, send them to the login page
+    return redirect("/login")
+
+
+@app.route("/signup", methods=["GET"])
+def signup_page():
+    if session.get("user_id"):
+        return redirect("/bank")
+    html = render_template("onboarding.html")
+    return Response(html, headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
 
 @app.route("/api/onboard", methods=["POST"])
