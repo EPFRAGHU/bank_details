@@ -673,6 +673,29 @@
       if (v == null || v === '' || isNaN(Number(v))) return '₹0.00';
       return '₹' + Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
+    function toShortMonth(s) {
+      if (!s) return '';
+      s = String(s).trim();
+      // Already YYYY-MM-DD or YYYY-MM
+      let m = s.match(/^(\d{4})-(\d{2})(?:-\d{2})?$/);
+      if (m) return `${m[2]}/${m[1]}`;
+      // "15 Apr 2026" or "Apr 2026" or "Apr-2026"
+      const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+      const parts = s.split(/[-\s]+/).filter(Boolean);
+      let mon = '', yr = '';
+      if (parts.length >= 3) { mon = parts[1].toLowerCase().substring(0, 3); yr = parts[2]; }
+      else if (parts.length === 2) { mon = parts[0].toLowerCase().substring(0, 3); yr = parts[1]; }
+      const mi = months.indexOf(mon);
+      if (mi >= 0 && /^\d{4}$/.test(yr)) return `${String(mi + 1).padStart(2, '0')}/${yr}`;
+      return s;
+    }
+    function formatPeriodShort(p) {
+      if (!p) return '—';
+      const parts = p.split(/\s+to\s+/i);
+      const a = toShortMonth(parts[0]);
+      const b = parts[1] ? toShortMonth(parts[1]) : '';
+      return b ? escapeHtml(`${a} to ${b}`) : escapeHtml(a);
+    }
 
     // ============================================================
     // ESTABLISHMENT SEARCH
@@ -1080,7 +1103,7 @@
                 : escapeHtml(u.account_number)}</td>
             <td class="col-period">${isEditing
                 ? `<input data-field="period" value="${escapeHtml(u.period || '')}" />`
-                : escapeHtml(u.period || '—')}</td>
+                : formatPeriodShort(u.period)}</td>
             <td class="col-total">${fmtMoney(u.total_amount)}</td>
             <td class="col-status"><span class="status-pill ${u.payment_status || 'pending'}">${escapeHtml((u.payment_status || 'pending').toUpperCase())}</span></td>
             <td class="col-8f">${u.eight_f_issued ? `<span class="status-pill issued">8F</span>` : '—'}</td>
@@ -1251,17 +1274,15 @@
       }
       emptyEightFRowEl.style.display = 'none';
       eightFRowsEl.innerHTML = rows.map(r => {
-        const periodParts = (r.period || '').split(/\s+to\s+/i);
-        const periodHtml = periodParts.length > 1
-          ? `<div>${escapeHtml(periodParts[0].trim() || '—')}</div><div style="color:#666; font-size:10px;">to</div><div>${escapeHtml(periodParts[1].trim() || '—')}</div>`
-          : escapeHtml(r.period || '—');
+        // Format period as MM/YYYY to MM/YYYY on one line
+        const periodFormatted = formatPeriodShort(r.period || '');
         return `
         <tr>
           <td class="col-id">${r.id}</td>
           <td class="col-code">${escapeHtml(r.est_id || '')}</td>
           <td class="col-est wrap">${escapeHtml(r.est_name || '')}</td>
           <td class="col-aeo wrap">${escapeHtml(r.aeo || '—')}</td>
-          <td class="col-period wrap" style="line-height:1.4;">${periodHtml}</td>
+          <td class="col-period">${periodFormatted}</td>
           <td class="col-amount">${fmtMoney(r.amount_7a_total)}</td>
           <td class="col-amount">${fmtMoney(r.amount_7q_7a_total)}</td>
           <td class="col-amount">${fmtMoney(r.amount_14b_total)}</td>
