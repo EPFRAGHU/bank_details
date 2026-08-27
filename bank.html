@@ -611,6 +611,7 @@
               <th class="col-total">Grand Total</th>
               <th class="col-8f-no">8F No</th>
               <th class="col-8f-date">8F Date</th>
+              <th class="col-status">Payment</th>
               <th class="col-bank">Bank</th>
               <th class="col-ifsc">IFSC</th>
               <th class="col-acct">Account No</th>
@@ -1261,6 +1262,7 @@
           <td class="col-total">${fmtMoney(r.total_amount)}</td>
           <td class="col-8f-no">${escapeHtml(r.eight_f_number || '—')}</td>
           <td class="col-8f-date">${escapeHtml(r.eight_f_issued_date || '—')}</td>
+          <td class="col-status"><span class="status-pill ${r.payment_status || 'pending'}">${escapeHtml((r.payment_status || 'pending').toUpperCase())}</span></td>
           <td class="col-bank">${escapeHtml(r.bank_name || '—')}</td>
           <td class="col-ifsc">${escapeHtml(r.ifsc || '—')}</td>
           <td class="col-acct">${escapeHtml(r.account_number || '—')}</td>
