@@ -39,7 +39,7 @@
 - `bank-preview.html` — Reference design (3-card layout + EPFO table)
 - `onboarding.html` — User registration
 - `admin.html` — Admin user list
-- `requirements.txt` — Flask, MetaTrader5, pytest
+- `requirements.txt` — Flask, gunicorn, reportlab
 
 ---
 
