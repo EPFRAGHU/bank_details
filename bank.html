@@ -354,7 +354,7 @@
       <p class="nav" style="margin:0;">&nbsp;</p>
       <div style="text-align:right;">
         <p id="userInfo" class="nav" style="margin:0; color:#666;"></p>
-        <p class="nav" style="margin:2px 0 0; color:#999; font-size:10px;">v1.0.0 → v1.2.5 (current)</p>
+        <p class="nav" style="margin:2px 0 0; color:#999; font-size:10px;"><a href="#" id="versionLink" style="color:#4c51bf; text-decoration:none;">v1.0.0 → v1.2.5 (current)</a></p>
       </div>
     </div>
 
@@ -1339,6 +1339,13 @@
               await fetch('/api/logout', { method: 'POST' });
               window.location.href = '/login';
             });
+            const versionLink = document.getElementById('versionLink');
+            if (versionLink) {
+              versionLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                showVersionHistory();
+              });
+            }
           }
         }
       } catch (e) { /* not logged in */ }
@@ -1347,6 +1354,66 @@
       await loadEightFRecords();
       recalcTotal();
     })();
+
+    // Version History Modal
+    const VERSION_HISTORY = [
+      { v: "v1.2.5", date: "2026-08-27 20:59", changes: ["PDF: right-align amount columns (7A, 7Q(7A), 14B, 7Q(14B), Grand Total, Total)"] },
+      { v: "v1.2.4", date: "2026-08-27 20:56", changes: ["PDF: fix column widths to fit content", "IFSC/A/c No use plain strings to prevent breaking"] },
+      { v: "v1.2.3", date: "2026-08-27 20:52", changes: ["PDF: widen amount/IFSC columns", "Simplify money format (no Rs., no .00 for whole numbers)"] },
+      { v: "v1.2.2", date: "2026-08-27 20:47", changes: ["Removed 'Back to users' link from bank page (admin-only access)"] },
+      { v: "v1.2.1", date: "2026-08-27 20:39", changes: ["Fix 8F payment_status sync: use bank_accounts as source of truth"] },
+      { v: "v1.2.0", date: "2026-08-27 20:34", changes: ["Format period display as MM/YYYY in both tables (e.g. 01/2005 to 05/2010)"] },
+      { v: "v1.1.2", date: "2026-08-27 20:26", changes: ["Fix AEO column wrapping and split period display"] },
+      { v: "v1.1.1", date: "2026-08-27 20:20", changes: ["Improve UI: wider AEO column, stacked Period fields, better PDF wrapping"] },
+      { v: "v1.1.0", date: "2026-08-27 20:10", changes: ["Add Payment column to 8F Issued tab (after 8F Date)"] },
+      { v: "v1.0.4", date: "2026-08-27 20:00", changes: ["Add login page and session management (/login, /api/login, /api/logout, /api/me)"] },
+      { v: "v1.0.3", date: "2026-08-27 19:34", changes: ["Add PostgreSQL/Neon database support"] },
+      { v: "v1.0.2", date: "2026-08-27 19:23", changes: ["Add Turso (libSQL) database support"] },
+      { v: "v1.0.1", date: "2026-08-27 19:18", changes: ["Fix backend bugs (ForeignKeyError, FK enforcement, dead POST code, INSERT mismatches)"] },
+      { v: "v1.0.0", date: "2026-08-27 18:18", changes: ["Initial release: bank.html rewritten to match bank-preview.html design (3-card layout + EPFO table)"] },
+    ];
+    function showVersionHistory() {
+      let modal = document.getElementById('versionModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'versionModal';
+        modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;';
+        const html = `
+          <div style="background:#fff; border-radius:10px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+            <div style="padding:16px 20px; border-bottom:1px solid #e8ebf0; display:flex; justify-content:space-between; align-items:center;">
+              <h3 style="margin:0; font-size:16px; color:#1a1a1a;">Version History</h3>
+              <button id="closeVersionModal" style="background:none; border:none; font-size:20px; cursor:pointer; color:#666;">×</button>
+            </div>
+            <div id="versionContent" style="padding:16px 20px;"></div>
+          </div>
+        `;
+        modal.innerHTML = html;
+        document.body.appendChild(modal);
+        document.getElementById('closeVersionModal').addEventListener('click', () => { modal.style.display = 'none'; });
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+      }
+      const content = document.getElementById('versionContent');
+      content.innerHTML = VERSION_HISTORY.map(item => `
+        <div style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid #f0f2f5;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="color:#4c51bf; font-size:13px;">${item.v}</strong>
+            <span style="color:#888; font-size:11px;">${item.date}</span>
+          </div>
+          <ul style="margin:0; padding-left:20px; font-size:12px; color:#444; line-height:1.5;">
+            ${item.changes.map(c => `<li>${c}</li>`).join('')}
+          </ul>
+        </div>
+      `).join('');
+      modal.style.display = 'flex';
+    }
   </script>
+
+  <style>
+    .version-modal-backdrop {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex;
+      align-items: center; justify-content: center; z-index: 9999;
+    }
+  </style>
 </body>
 </html>
