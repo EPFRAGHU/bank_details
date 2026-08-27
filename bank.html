@@ -350,10 +350,11 @@
 </head>
 <body>
   <div class="wrap">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
       <p class="nav" style="margin:0;">&nbsp;</p>
       <div style="text-align:right;">
         <p id="userInfo" class="nav" style="margin:0; color:#666;"></p>
+        <p class="nav" style="margin:2px 0 0; color:#333; font-size:11px; font-weight:600;" id="currentDateTime"></p>
         <p class="nav" style="margin:2px 0 0; color:#999; font-size:10px;"><a href="#" id="versionLink" style="color:#4c51bf; text-decoration:none;">v1.0.0 → v1.2.5 (current)</a></p>
       </div>
     </div>
@@ -1349,6 +1350,21 @@
           }
         }
       } catch (e) { /* not logged in */ }
+      // Start running clock
+      function updateClock() {
+        const el = document.getElementById('currentDateTime');
+        if (!el) return;
+        const d = new Date();
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mi = String(d.getMinutes()).padStart(2, '0');
+        const ss = String(d.getSeconds()).padStart(2, '0');
+        el.textContent = `${dd}/${mm}/${yyyy} (${hh}:${mi}:${ss})`;
+      }
+      updateClock();
+      setInterval(updateClock, 1000);
       await loadAllEsts();
       await loadBankAccounts();
       await loadEightFRecords();
