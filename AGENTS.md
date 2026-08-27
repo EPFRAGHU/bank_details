@@ -118,30 +118,60 @@
 
 ## Current Development Status
 
-**Last Completed:** Project pushed to GitHub: `https://github.com/EPFRAGHU/bank_details.git`
+**Last Completed:** v1.2.6 — Optimized bank page load (lazy-load 48k establishments, parallel API calls, HTTP caching)
 
-**Currently Working On:** Saving final state to memory (AGENTS.md, CHANGELOG.md)
+**Currently Working On:** Saving to memory
 
 **Last Known Working State:**
-- Flask app runs on port 5000
-- All APIs return correct data
-- `bank.html` matches `bank-preview.html` design (3-card layout + EPFO table)
-- Grand Total row shows per-account sums (A/c 1, 2, 10, 21, 22) + overall total
-- Period fields use `type="date"` with calendar picker
-- Period persistence on edit works for all formats
-- AEO column added to bank accounts table
-- Bank name shows only bank name (no branch, no hyphen)
-- 48,791 establishments preserved in database
+- Flask app deployed to Render with Neon PostgreSQL
+- Home page redirects to /login; /signup for new accounts
+- 48,791 establishments in Neon (preloaded)
+- Bank page: 3-card layout, EPFO table with per-account grand totals
+- Login page with session management
+- 8F payment_status synced from bank_accounts (source of truth)
+- PDF export: right-aligned amounts, no Rs./.00, wrapped text
+- Period displays as MM/YYYY (e.g. 01/2005 to 05/2010)
+- AEO column properly wraps
+- Running IST clock + clickable version history modal
+- Version auto-bumps on every change (v1.2.6 current)
 
 **Next Tasks:**
-1. ✅ Push to GitHub (completed)
-2. ✅ Update documentation (in progress)
-3. User acceptance testing in browser
-4. Future feature additions per user requirements
+1. ✅ Optimized bank page load (v1.2.6)
+2. ✅ Memory save (in progress)
+3. User acceptance testing
+4. Future feature additions
 
 **Unresolved Issues:** None critical.
 
 **Git Repository:** `https://github.com/EPFRAGHU/bank_details.git` (branch: main)
+
+**Neon Database:**
+- URL: `postgresql://neondb_owner:npg_CPb6w7SsaMVF@ep-curly-base-b3kmxai6-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb`
+- Region: AWS Asia Pacific (Mumbai)
+- 48,791 establishments + 0 bank accounts + 0 8F records (fresh)
+
+**Render Web Service:**
+- URL: `https://bank-account-app.onrender.com`
+- Plan: Free tier
+- Auto-deploys from GitHub main branch
+- Env vars: DATABASE_URL, SECRET_KEY, PASSWORD_SALT, PYTHON_VERSION
+
+**Version History (in bank.html):**
+- v1.0.0 — Initial release (bank.html rewrite)
+- v1.0.1 — Backend bug fixes
+- v1.0.2 — Turso support
+- v1.0.3 — PostgreSQL/Neon support
+- v1.0.4 — Login page
+- v1.1.0 — Payment column in 8F tab
+- v1.1.1 — UI improvements
+- v1.1.2 — AEO/period fixes
+- v1.2.0 — Period MM/YYYY format
+- v1.2.1 — 8F payment_status sync
+- v1.2.2 — Removed "Back to users"
+- v1.2.3 — PDF widen columns
+- v1.2.4 — PDF column widths
+- v1.2.5 — PDF right-align amounts
+- v1.2.6 — Optimize bank page load (current)
 
 ---
 

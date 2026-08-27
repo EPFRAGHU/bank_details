@@ -1,12 +1,34 @@
 # Changelog
 
+## [2026-08-28] — Memory Save
+
+### Updated
+- `AGENTS.md` — CURRENT STATUS section with v1.2.6 status, Neon DB info, Render info
+- `CHANGELOG.md` — Added comprehensive v1.2.6 summary
+- Memory persists: PostgreSQL/Neon DB URL, Render URL, env vars, version history
+
 ## [Unreleased]
 
 ### Planned
 - User acceptance testing in browser
 - Future feature additions per user requirements
 
-## [2026-08-27] — Git Push & Memory Save
+## [2026-08-28] — v1.2.6 (Auto-bumped)
+
+### Changed
+- Optimized bank page load: lazy-load 48k establishments (only on search focus)
+- Parallel API calls (loadBankAccounts + loadEightFRecords) via Promise.all
+- HTTP caching for /api/establishments (max-age=300)
+- Redirect home page to /login; add /signup route for new account creation
+- Convert all timestamps to India/IST timezone (UTC+5:30)
+- Add running date/time clock above version number
+- Add version history modal (click version to see all releases)
+- Period displayed as MM/YYYY on one line in both tables
+- Fix 8F payment_status to always read from bank_accounts (source of truth)
+- PDF: right-aligned amounts, widened columns, simplified money format
+- AEO column wraps properly, period stacked vertically on form
+
+## [2026-08-27] — Initial Project State (Inherited)
 
 ### Added
 - `.gitignore` — excludes database, logs, test files, IDE configs
