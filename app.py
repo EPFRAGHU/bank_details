@@ -960,14 +960,13 @@ def export_pdf():
 
             _cell = ParagraphStyle("cell", fontSize=7, leading=8, wordWrap="CJK")
             headers = ["#", "Est Code", "Establishment", "AEO", "IFSC", "Bank", "Branch",
-                       "A/c No", "Address", "Period", "Total", "Payment", "8F No", "8F Date"]
+                       "A/c No", "Period", "Total", "Payment", "8F No", "8F Date"]
             rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), _cell),
                      Paragraph(str(r.get("aeo","") or "—"), _cell),
                      Paragraph(str(r.get("ifsc","") or "—"), _cell),
                      Paragraph(str(r.get("bank_name","") or "—"), _cell),
                      Paragraph(str(r.get("branch","") or "—"), _cell),
                      Paragraph(str(r.get("account_number","") or "—"), _cell),
-                     Paragraph(str(r.get("address","") or "—"), _cell),
                      Paragraph(str(r.get("period","") or "—"), _cell),
                      _fmt_money(r.get("total_amount")),
                      (r.get("payment_status","") or "").upper(),
@@ -995,8 +994,8 @@ def export_pdf():
         # #, Est Code, Establishment, AEO, Period, 7A, 7Q(7A), 14B, 7Q(14B), Grand Total, 8F No, 8F Date, Bank, IFSC, A/c No, Status
         widths = [6, 22, 32, 22, 20, 14, 14, 14, 14, 18, 14, 16, 22, 16, 20, 14]
     else:
-        # #, Est Code, Establishment, AEO, IFSC, Bank, Branch, A/c No, Address, Period, Total, Payment, 8F No, 8F Date
-        widths = [6, 22, 32, 22, 16, 22, 20, 22, 38, 20, 18, 14, 14, 16]
+        # #, Est Code, Establishment, AEO, IFSC, Bank, Branch, A/c No, Period, Total, Payment, 8F No, 8F Date
+        widths = [6, 24, 34, 26, 18, 26, 22, 24, 26, 20, 16, 16, 18]
     total_w = sum(widths)
     if total_w > 0:
         scale = avail / total_w
