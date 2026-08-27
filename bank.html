@@ -348,7 +348,10 @@
 </head>
 <body>
   <div class="wrap">
-    <p class="nav"><a href="/admin">← Back to users</a></p>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <p class="nav" style="margin:0;"><a href="/admin">← Back to users</a></p>
+      <p id="userInfo" class="nav" style="margin:0; color:#666;"></p>
+    </div>
 
     <!-- BANK DETAILS -->
     <form id="bankForm" autocomplete="off">
@@ -1290,6 +1293,22 @@
     // INIT
     // ============================================================
     (async function init() {
+      // Check login status
+      try {
+        const meRes = await fetch('/api/me');
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          const userInfo = document.getElementById('userInfo');
+          if (userInfo && meData.user) {
+            userInfo.innerHTML = `Logged in as <strong>${meData.user.name}</strong> | <a href="#" id="logoutLink">Logout</a>`;
+            document.getElementById('logoutLink').addEventListener('click', async (e) => {
+              e.preventDefault();
+              await fetch('/api/logout', { method: 'POST' });
+              window.location.href = '/login';
+            });
+          }
+        }
+      } catch (e) { /* not logged in */ }
       await loadAllEsts();
       await loadBankAccounts();
       await loadEightFRecords();

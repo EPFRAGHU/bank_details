@@ -11,7 +11,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, session, redirect, url_for
 
 DB_PATH = os.getenv("ONBOARDING_DB", "logs/onboarding.sqlite3")
 TURSO_URL = os.getenv("TURSO_URL", "").strip()
@@ -21,6 +21,7 @@ USE_TURSO = bool(TURSO_URL and TURSO_TOKEN)
 USE_POSTGRES = bool(DATABASE_URL and DATABASE_URL.startswith(("postgres://", "postgresql://")))
 
 app = Flask(__name__, template_folder=".")
+app.secret_key = os.getenv("SECRET_KEY", "change-me-in-production-" + os.urandom(16).hex())
 
 
 def _translate_sql(sql):
@@ -413,6 +414,57 @@ def list_users():
         cur.execute(_translate_sql("SELECT id, full_name, email, phone, date_of_birth, country, created_at FROM onboarded_users ORDER BY id DESC"))
         rows = [_row_dict(r) for r in cur.fetchall()]
     return jsonify(rows)
+
+
+@app.route("/login", methods=["GET"])
+def login_page():
+    if session.get("user_id"):
+        return redirect("/bank")
+    html = render_template("login.html")
+    return Response(html, headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    payload = request.get_json(silent=True) or request.form.to_dict()
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or ""
+    if not email or not password:
+        return jsonify({"status": "error", "message": "Email and password are required"}), 400
+    with _connect() as conn:
+        cur = conn.cursor()
+        cur.execute(_translate_sql("SELECT id, full_name, email, password_hash FROM onboarded_users WHERE email = %s" if USE_POSTGRES else "SELECT id, full_name, email, password_hash FROM onboarded_users WHERE email = ?"), (email,))
+        row = _row_dict(cur.fetchone())
+    if not row:
+        return jsonify({"status": "error", "message": "Invalid email or password"}), 401
+    if row.get("password_hash") != _hash_password(password):
+        return jsonify({"status": "error", "message": "Invalid email or password"}), 401
+    session["user_id"] = row["id"]
+    session["user_email"] = row["email"]
+    session["user_name"] = row["full_name"]
+    return jsonify({"status": "ok", "message": "Login successful", "user": {"id": row["id"], "name": row["full_name"], "email": row["email"]}})
+
+
+@app.route("/api/logout", methods=["POST", "GET"])
+def api_logout():
+    session.clear()
+    if request.method == "GET":
+        return redirect("/login")
+    return jsonify({"status": "ok", "message": "Logged out"})
+
+
+@app.route("/api/me", methods=["GET"])
+def api_me():
+    if not session.get("user_id"):
+        return jsonify({"status": "error", "message": "Not logged in"}), 401
+    return jsonify({
+        "status": "ok",
+        "user": {
+            "id": session.get("user_id"),
+            "name": session.get("user_name"),
+            "email": session.get("user_email"),
+        }
+    })
 
 
 @app.route("/admin", methods=["GET"])

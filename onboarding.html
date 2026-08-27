@@ -142,6 +142,10 @@
       <p id="status" class="status"></p>
     </form>
 
+    <p style="text-align:center; margin-top:20px; font-size:13px; color:#666;">
+      Already have an account? <a href="/login" style="color:#667eea; text-decoration:none; font-weight:600;">Sign in</a>
+    </p>
+
     <script>
       const form = document.getElementById('onboardForm');
       const status = document.getElementById('status');
@@ -157,10 +161,11 @@
             body: JSON.stringify(data)
           });
           const body = await res.json();
-          if (res.ok) {
-            status.textContent = body.message;
-            status.className = 'status ok';
-            form.reset();
+        if (res.ok) {
+          status.textContent = body.message + ' Redirecting to login...';
+          status.className = 'status ok';
+          form.reset();
+          setTimeout(() => { window.location.href = '/login'; }, 1000);
           } else {
             status.textContent = body.message || 'Submission failed';
             status.className = 'status err';
