@@ -1044,6 +1044,9 @@ def export_pdf():
         ("FONTSIZE", (0,1), (-1,-1), 7),
         ("ALIGN", (0,1), (0,-1), "CENTER"),
         ("ALIGN", (5,1), (-1,-1), "LEFT"),
+        # Right-align amount columns for 8F tab (7A=5, 7Q(7A)=6, 14B=7, 7Q(14B)=8, Grand Total=9)
+        # Right-align Total column for bank tab (Total=9)
+        ("ALIGN", (5,1), (9,-1), "RIGHT"),
         ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
         ("GRID", (0,0), (-1,-1), 0.3, colors.grey),
         ("LEFTPADDING", (0,0), (-1,-1), 3),
