@@ -734,10 +734,20 @@
         console.error('Failed to load establishments', e);
       }
     }
+    let estsLoading = false;
+    async function ensureEstsLoaded() {
+      if (allEsts.length > 0 || estsLoading) return;
+      estsLoading = true;
+      await loadAllEsts();
+      estsLoading = false;
+    }
     searchEl.addEventListener('focus', () => {
-      if (filtered.length > 0) menuEl.classList.add('open');
+      ensureEstsLoaded().then(() => {
+        if (filtered.length > 0) menuEl.classList.add('open');
+      });
     });
     searchEl.addEventListener('input', () => {
+      ensureEstsLoaded();
       hiddenEl.value = '';
       nameEl.value = '';
       clearExistingAccounts();
@@ -1367,9 +1377,8 @@
       }
       updateClock();
       setInterval(updateClock, 1000);
-      await loadAllEsts();
-      await loadBankAccounts();
-      await loadEightFRecords();
+      // Load data in parallel; skip pre-loading 48k establishments (lazy on search focus)
+      await Promise.all([loadBankAccounts(), loadEightFRecords()]);
       recalcTotal();
     })();
 

@@ -517,7 +517,10 @@ def list_establishments():
         else:
             rows = cur.fetchall()
         data = [_row_dict(r) for r in rows]
-    return jsonify(data)
+    resp = jsonify(data)
+    # Cache for 5 minutes (data rarely changes)
+    resp.headers["Cache-Control"] = "public, max-age=300"
+    return resp
 
 
 @app.route("/api/bank-accounts", methods=["GET", "POST"])
