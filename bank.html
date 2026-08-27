@@ -102,9 +102,9 @@
 
     /* Period inline */
     .period-inline {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 6px; align-items: center;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
     .period-inline input {
       width: 100%; padding: 5px 8px; border: 1px solid #d0d4dc;
@@ -112,7 +112,8 @@
       min-width: 0;
     }
     .period-inline span {
-      font-size: 11px; color: #888; font-weight: 600;
+      font-size: 10px; color: #888; font-weight: 600;
+      text-align: center;
     }
 
     /* Status inline */
@@ -275,7 +276,7 @@
     .data-table .col-period { width: 140px; }
     .data-table .col-bank { min-width: 120px; }
     .data-table .col-branch { min-width: 100px; }
-    .data-table .col-aeo { width: 120px; max-width: 150px; white-space: normal; word-break: break-word; }
+    .data-table .col-aeo { width: 180px; max-width: 220px; white-space: normal; word-break: break-word; }
     .data-table input, .data-table textarea {
       width: 100%; padding: 4px 6px; border: 1px solid #d0d4dc;
       border-radius: 4px; font-size: 11px; font-family: inherit; box-sizing: border-box;

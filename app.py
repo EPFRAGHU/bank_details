@@ -931,14 +931,19 @@ def export_pdf():
             records = [_row_dict(r) for r in cur.fetchall()]
             records.sort(key=lambda r: (r.get(col) or ""), reverse=reverse)
 
+            _cell = ParagraphStyle("cell", fontSize=7, leading=8, wordWrap="CJK")
             headers = ["#", "Est Code", "Establishment", "AEO", "Period", "7A", "7Q(7A)", "14B", "7Q(14B)",
                        "Grand Total", "8F No", "8F Date", "Bank", "IFSC", "A/c No", "Status"]
-            rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), ParagraphStyle("cell", fontSize=7)),
-                     r.get("aeo",""), r.get("period",""), _fmt_money(r.get("amount_7a_total")),
+            rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), _cell),
+                     Paragraph(str(r.get("aeo","") or "—"), _cell),
+                     Paragraph(str(r.get("period","") or "—"), _cell),
+                     _fmt_money(r.get("amount_7a_total")),
                      _fmt_money(r.get("amount_7q_7a_total")), _fmt_money(r.get("amount_14b_total")),
                      _fmt_money(r.get("amount_7q_14b_total")), _fmt_money(r.get("total_amount")),
                      r.get("eight_f_number",""), _fmt_date(r.get("eight_f_issued_date")),
-                     r.get("bank_name",""), r.get("ifsc",""), r.get("account_number",""),
+                     Paragraph(str(r.get("bank_name","") or "—"), _cell),
+                     Paragraph(str(r.get("ifsc","") or "—"), _cell),
+                     Paragraph(str(r.get("account_number","") or "—"), _cell),
                      (r.get("payment_status","") or "").upper()] for i, r in enumerate(records)]
             title = "8F Issued Records"
         else:
@@ -953,12 +958,18 @@ def export_pdf():
             records = [_row_dict(r) for r in cur.fetchall()]
             records.sort(key=lambda r: (r.get(col) or ""), reverse=reverse)
 
+            _cell = ParagraphStyle("cell", fontSize=7, leading=8, wordWrap="CJK")
             headers = ["#", "Est Code", "Establishment", "AEO", "IFSC", "Bank", "Branch",
                        "A/c No", "Address", "Period", "Total", "Payment", "8F No", "8F Date"]
-            rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), ParagraphStyle("cell", fontSize=7)),
-                     r.get("aeo",""), r.get("ifsc",""), r.get("bank_name",""), r.get("branch",""),
-                     r.get("account_number",""), Paragraph(str(r.get("address","") or ""), ParagraphStyle("cell", fontSize=7)),
-                     r.get("period",""), _fmt_money(r.get("total_amount")),
+            rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), _cell),
+                     Paragraph(str(r.get("aeo","") or "—"), _cell),
+                     Paragraph(str(r.get("ifsc","") or "—"), _cell),
+                     Paragraph(str(r.get("bank_name","") or "—"), _cell),
+                     Paragraph(str(r.get("branch","") or "—"), _cell),
+                     Paragraph(str(r.get("account_number","") or "—"), _cell),
+                     Paragraph(str(r.get("address","") or "—"), _cell),
+                     Paragraph(str(r.get("period","") or "—"), _cell),
+                     _fmt_money(r.get("total_amount")),
                      (r.get("payment_status","") or "").upper(),
                      r.get("eight_f_number","") if r.get("eight_f_issued") else "—",
                      _fmt_date(r.get("eight_f_issued_date")) if r.get("eight_f_issued") else "—"] for i, r in enumerate(records)]
@@ -974,13 +985,18 @@ def export_pdf():
     elements = [Paragraph(title, title_style),
                 Paragraph(f"Sorted by: {sort_key} &middot; {len(records)} record(s)", sub_style)]
 
-    data = [headers] + rows
+    # Wrap header text in Paragraphs for multi-line headers
+    _header_style = ParagraphStyle("hdr", fontSize=7, leading=8, textColor=colors.whitesmoke, alignment=1, wordWrap="CJK", fontName="Helvetica-Bold")
+    wrapped_headers = [Paragraph(h, _header_style) for h in headers]
+    data = [wrapped_headers] + rows
     col_count = len(headers)
     avail = 281 * mm
     if tab == "8f":
-        widths = [8, 24, 36, 22, 18, 16, 16, 16, 16, 20, 14, 18, 22, 18, 20, 16]
+        # #, Est Code, Establishment, AEO, Period, 7A, 7Q(7A), 14B, 7Q(14B), Grand Total, 8F No, 8F Date, Bank, IFSC, A/c No, Status
+        widths = [6, 22, 32, 22, 20, 14, 14, 14, 14, 18, 14, 16, 22, 16, 20, 14]
     else:
-        widths = [8, 24, 36, 22, 18, 22, 20, 24, 40, 18, 18, 14, 14, 16]
+        # #, Est Code, Establishment, AEO, IFSC, Bank, Branch, A/c No, Address, Period, Total, Payment, 8F No, 8F Date
+        widths = [6, 22, 32, 22, 16, 22, 20, 22, 38, 20, 18, 14, 14, 16]
     total_w = sum(widths)
     if total_w > 0:
         scale = avail / total_w
