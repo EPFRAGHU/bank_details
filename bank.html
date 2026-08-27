@@ -355,7 +355,7 @@
       <div style="text-align:right;">
         <p id="userInfo" class="nav" style="margin:0; color:#666;"></p>
         <p class="nav" style="margin:2px 0 0; color:#333; font-size:11px; font-weight:600;" id="currentDateTime"></p>
-        <p class="nav" style="margin:2px 0 0; color:#999; font-size:10px;"><a href="#" id="versionLink" style="color:#4c51bf; text-decoration:none;">v1.0.0 → v1.2.5 (current)</a></p>
+        <p class="nav" style="margin:2px 0 0; color:#999; font-size:10px;"><a href="#" id="versionLink" style="color:#4c51bf; text-decoration:none;">v1.0.0 → v1.2.6 (current)</a></p>
       </div>
     </div>
 
@@ -1384,6 +1384,7 @@
 
     // Version History Modal (all times in IST/India)
     const VERSION_HISTORY = [
+      { v: "v1.2.6", date: "2026-08-28 02:53 IST", changes: ["Optimize bank page load: lazy-load 48k establishments, parallel API calls, HTTP caching"] },
       { v: "v1.2.5", date: "2026-08-28 02:29 IST", changes: ["PDF: right-align amount columns (7A, 7Q(7A), 14B, 7Q(14B), Grand Total, Total)"] },
       { v: "v1.2.4", date: "2026-08-28 02:26 IST", changes: ["PDF: fix column widths to fit content", "IFSC/A/c No use plain strings to prevent breaking"] },
       { v: "v1.2.3", date: "2026-08-28 02:22 IST", changes: ["PDF: widen amount/IFSC columns", "Simplify money format (no Rs., no .00 for whole numbers)"] },
