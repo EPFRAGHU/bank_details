@@ -1,19 +1,19 @@
 # Changelog
 
-## [2026-08-28] — Memory Save
+## [2026-08-28] — v1.2.7 (Auto-bumped)
+
+### Added
+- **Payment card**: Demand type radio button (Current | Arrear)
+- **Payment card**: RRC No. and RRC Date fields (shown when demand is selected)
+- **Entered Bank Accounts table**: Demand, RRC No, RRC Date columns
+- **8F Issued table**: Demand, RRC No, RRC Date columns
+- **Database migration**: demand_type, rrc_number, rrc_date columns added to bank_accounts and epfo_8f_records (backward-compatible ALTER TABLE)
 
 ### Updated
-- `AGENTS.md` — CURRENT STATUS section with v1.2.6 status, Neon DB info, Render info
-- `CHANGELOG.md` — Added comprehensive v1.2.6 summary
-- Memory persists: PostgreSQL/Neon DB URL, Render URL, env vars, version history
+- `AGENTS.md` — Updated CURRENT STATUS with v1.2.7 details, full schema, migration procedure
+- `CHANGELOG.md` — Added v1.2.7 entry
 
-## [Unreleased]
-
-### Planned
-- User acceptance testing in browser
-- Future feature additions per user requirements
-
-## [2026-08-28] — v1.2.6 (Auto-bumped)
+## [2026-08-28] — Memory Save (v1.2.6)
 
 ### Changed
 - Optimized bank page load: lazy-load 48k establishments (only on search focus)

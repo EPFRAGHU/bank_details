@@ -118,7 +118,7 @@
 
 ## Current Development Status
 
-**Last Completed:** v1.2.6 — Optimized bank page load (lazy-load 48k establishments, parallel API calls, HTTP caching)
+**Last Completed:** v1.2.7 — Add Demand type (Current/Arrear) + RRC No. and RRC Date fields
 
 **Currently Working On:** Saving to memory
 
@@ -133,10 +133,13 @@
 - Period displays as MM/YYYY (e.g. 01/2005 to 05/2010)
 - AEO column properly wraps
 - Running IST clock + clickable version history modal
-- Version auto-bumps on every change (v1.2.6 current)
+- Version auto-bumps on every change (v1.2.7 current)
+- Demand type (Current/Arrear) radio + RRC No./Date fields
+- Tables show Demand, RRC No, RRC Date columns
+- Database auto-migrates new columns backward-compatibly
 
 **Next Tasks:**
-1. ✅ Optimized bank page load (v1.2.6)
+1. ✅ v1.2.7 — Demand/RRC fields (completed)
 2. ✅ Memory save (in progress)
 3. User acceptance testing
 4. Future feature additions
@@ -148,7 +151,7 @@
 **Neon Database:**
 - URL: `postgresql://neondb_owner:npg_CPb6w7SsaMVF@ep-curly-base-b3kmxai6-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb`
 - Region: AWS Asia Pacific (Mumbai)
-- 48,791 establishments + 0 bank accounts + 0 8F records (fresh)
+- 48,791 establishments + bank accounts + 8F records
 
 **Render Web Service:**
 - URL: `https://bank-account-app.onrender.com`
@@ -171,7 +174,19 @@
 - v1.2.3 — PDF widen columns
 - v1.2.4 — PDF column widths
 - v1.2.5 — PDF right-align amounts
-- v1.2.6 — Optimize bank page load (current)
+- v1.2.6 — Optimize bank page load
+- v1.2.7 — Demand type + RRC fields (current)
+
+**Database Schema (current):**
+- `onboarded_users`: id, full_name, email, phone, date_of_birth, country, password_hash, created_at
+- `establishments`: id, sr_no, est_id, est_name, office, circle, aeo, phone
+- `bank_accounts`: id, establishment_id, account_number, ifsc, code, bank_name, branch, address, city1, city2, district, state, phone, contact, aeo, period, amount_7a_ac1-22, amount_7a_total, amount_7q_7a_ac1-22, amount_7q_7a_total, amount_14b_ac1-22, amount_14b_total, amount_7q_14b_ac1-22, amount_7q_14b_total, total_amount, payment_status, payment_date, eight_f_issued, eight_f_number, eight_f_issued_date, created_at, demand_type, rrc_number, rrc_date
+- `epfo_8f_records`: same structure + bank_account_id, establishment_id, est_id, est_name, eight_f_number, etc.
+
+**Migration Procedure:**
+- `init_db()` is idempotent — runs CREATE TABLE IF NOT EXISTS
+- Backward-compatible ALTER TABLE for new columns (demand_type, rrc_number, rrc_date)
+- Runs on every app startup
 
 ---
 
