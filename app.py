@@ -147,6 +147,9 @@ SCHEMA_SQLITE = {
             eight_f_issued_date TEXT,
             created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
             aeo TEXT,
+            demand_type TEXT,
+            rrc_number TEXT,
+            rrc_date TEXT,
             FOREIGN KEY (establishment_id) REFERENCES establishments(id) ON DELETE CASCADE
         )
     """,
@@ -198,6 +201,9 @@ SCHEMA_SQLITE = {
             amount_7q_14b_ac22 REAL DEFAULT 0,
             amount_7q_14b_total REAL DEFAULT 0,
             created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
+            demand_type TEXT,
+            rrc_number TEXT,
+            rrc_date TEXT,
             FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE CASCADE,
             FOREIGN KEY (establishment_id) REFERENCES establishments(id) ON DELETE CASCADE
         )
@@ -277,7 +283,10 @@ SCHEMA_POSTGRES = {
             eight_f_number TEXT,
             eight_f_issued_date TEXT,
             created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
-            aeo TEXT
+            aeo TEXT,
+            demand_type TEXT,
+            rrc_number TEXT,
+            rrc_date TEXT
         )
     """,
     "epfo_8f_records": """
@@ -327,14 +336,17 @@ SCHEMA_POSTGRES = {
             amount_7q_14b_ac21 DOUBLE PRECISION DEFAULT 0,
             amount_7q_14b_ac22 DOUBLE PRECISION DEFAULT 0,
             amount_7q_14b_total DOUBLE PRECISION DEFAULT 0,
-            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
+            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
+            demand_type TEXT,
+            rrc_number TEXT,
+            rrc_date TEXT
         )
     """,
 }
 
 
 def init_db(db_path: str = DB_PATH) -> None:
-    """Initialize database schema."""
+    """Initialize database schema with backward-compatible migrations."""
     schema = SCHEMA_POSTGRES if USE_POSTGRES else SCHEMA_SQLITE
     if not USE_POSTGRES and not USE_TURSO:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -342,7 +354,25 @@ def init_db(db_path: str = DB_PATH) -> None:
         cur = conn.cursor()
         for table_name, ddl in schema.items():
             cur.execute(_translate_sql(ddl))
-        conn.commit()
+        # Backward-compatible migrations for existing tables
+        for table in ("bank_accounts", "epfo_8f_records"):
+            for col, col_type in [("demand_type", "TEXT"), ("rrc_number", "TEXT"), ("rrc_date", "TEXT")]:
+                if USE_POSTGRES:
+                    cur.execute(
+                        "SELECT 1 FROM information_schema.columns WHERE table_name = %s AND column_name = %s",
+                        (table, col),
+                    )
+                    if cur.fetchone() is None:
+                        cur.execute(_translate_sql(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+                else:
+                    cur.execute(f"PRAGMA table_info({table})")
+                    existing = [r[1] for r in cur.fetchall()]
+                    if col not in existing:
+                        cur.execute(_translate_sql(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
+            if USE_POSTGRES:
+                conn.commit()
+        if not USE_POSTGRES:
+            conn.commit()
 
 
 def _hash_password(password: str) -> str:
@@ -540,6 +570,7 @@ def bank_accounts():
                        b.total_amount,
                        b.payment_status, b.payment_date, b.eight_f_issued,
                        b.eight_f_number, b.eight_f_issued_date,
+                       b.demand_type, b.rrc_number, b.rrc_date,
                        e.est_id, e.est_name
                 FROM bank_accounts b
                 JOIN establishments e ON e.id = b.establishment_id
@@ -594,8 +625,8 @@ def bank_accounts():
     try:
         with _connect() as conn:
             cur = conn.cursor()
-            insert_cols = "establishment_id, account_number, ifsc, code, bank_name, branch, address, city1, city2, district, state, phone, contact, aeo, period, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, total_amount, payment_status, payment_date, eight_f_issued, eight_f_number, eight_f_issued_date"
-            placeholders = ", ".join(["%s" if USE_POSTGRES else "?"] * 45)
+            insert_cols = "establishment_id, account_number, ifsc, code, bank_name, branch, address, city1, city2, district, state, phone, contact, aeo, period, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, total_amount, payment_status, payment_date, eight_f_issued, eight_f_number, eight_f_issued_date, demand_type, rrc_number, rrc_date"
+            placeholders = ", ".join(["%s" if USE_POSTGRES else "?"] * 48)
             insert_sql = f"INSERT INTO bank_accounts ({insert_cols}) VALUES ({placeholders})"
             if USE_POSTGRES:
                 insert_sql += " RETURNING id"
@@ -620,6 +651,9 @@ def bank_accounts():
                 total_amount, payment_status,
                 (payload.get("payment_date") or "").strip() or None,
                 eight_f_issued, eight_f_number, eight_f_issued_date,
+                (payload.get("demand_type") or "").strip().lower() or None,
+                (payload.get("rrc_number") or "").strip() or None,
+                (payload.get("rrc_date") or "").strip() or None,
             )
             cur.execute(insert_sql, values)
             if USE_POSTGRES:
@@ -628,8 +662,8 @@ def bank_accounts():
             else:
                 bank_id = cur.lastrowid
             if eight_f_issued:
-                epfo_cols = "bank_account_id, establishment_id, est_id, est_name, aeo, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, city1, city2, district, state, phone, period, total_amount, payment_status, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total"
-                epfo_placeholders = ", ".join(["%s" if USE_POSTGRES else "?"] * 44)
+                epfo_cols = "bank_account_id, establishment_id, est_id, est_name, aeo, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, city1, city2, district, state, phone, period, total_amount, payment_status, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, demand_type, rrc_number, rrc_date"
+                epfo_placeholders = ", ".join(["%s" if USE_POSTGRES else "?"] * 47)
                 epfo_sql = f"INSERT INTO epfo_8f_records ({epfo_cols}) VALUES ({epfo_placeholders})"
                 epfo_values = (
                     bank_id, est_id,
@@ -652,6 +686,9 @@ def bank_accounts():
                     *section_amounts["7q_7a"], section_totals["7q_7a"],
                     *section_amounts["14b"], section_totals["14b"],
                     *section_amounts["7q_14b"], section_totals["7q_14b"],
+                    (payload.get("demand_type") or "").strip().lower() or None,
+                    (payload.get("rrc_number") or "").strip() or None,
+                    (payload.get("rrc_date") or "").strip() or None,
                 )
                 cur.execute(epfo_sql, epfo_values)
             conn.commit()
@@ -832,7 +869,8 @@ def list_epfo_8f():
                        b.amount_7a_ac1, b.amount_7a_ac2, b.amount_7a_ac10, b.amount_7a_ac21, b.amount_7a_ac22, b.amount_7a_total,
                        b.amount_7q_7a_ac1, b.amount_7q_7a_ac2, b.amount_7q_7a_ac10, b.amount_7q_7a_ac21, b.amount_7q_7a_ac22, b.amount_7q_7a_total,
                        b.amount_14b_ac1, b.amount_14b_ac2, b.amount_14b_ac10, b.amount_14b_ac21, b.amount_14b_ac22, b.amount_14b_total,
-                       b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total
+                       b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total,
+                       b.demand_type, b.rrc_number, b.rrc_date
                 FROM epfo_8f_records r
                 JOIN bank_accounts b ON b.id = r.bank_account_id
                 UNION
@@ -844,7 +882,8 @@ def list_epfo_8f():
                        b.amount_7a_ac1, b.amount_7a_ac2, b.amount_7a_ac10, b.amount_7a_ac21, b.amount_7a_ac22, b.amount_7a_total,
                        b.amount_7q_7a_ac1, b.amount_7q_7a_ac2, b.amount_7q_7a_ac10, b.amount_7q_7a_ac21, b.amount_7q_7a_ac22, b.amount_7q_7a_total,
                        b.amount_14b_ac1, b.amount_14b_ac2, b.amount_14b_ac10, b.amount_14b_ac21, b.amount_14b_ac22, b.amount_14b_total,
-                       b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total
+                       b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total,
+                       b.demand_type, b.rrc_number, b.rrc_date
                 FROM bank_accounts b
                 JOIN establishments e ON e.id = b.establishment_id
                 WHERE b.eight_f_issued = 1
@@ -861,7 +900,8 @@ def list_epfo_8f():
                        b.amount_7a_ac1, b.amount_7a_ac2, b.amount_7a_ac10, b.amount_7a_ac21, b.amount_7a_ac22, b.amount_7a_total,
                        b.amount_7q_7a_ac1, b.amount_7q_7a_ac2, b.amount_7q_7a_ac10, b.amount_7q_7a_ac21, b.amount_7q_7a_ac22, b.amount_7q_7a_total,
                        b.amount_14b_ac1, b.amount_14b_ac2, b.amount_14b_ac10, b.amount_14b_ac21, b.amount_14b_ac22, b.amount_14b_total,
-                       b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total
+                       b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total,
+                       b.demand_type, b.rrc_number, b.rrc_date
                 FROM epfo_8f_records r
                 JOIN bank_accounts b ON b.id = r.bank_account_id
                 UNION
@@ -873,7 +913,8 @@ def list_epfo_8f():
                        b.amount_7a_ac1, b.amount_7a_ac2, b.amount_7a_ac10, b.amount_7a_ac21, b.amount_7a_ac22, b.amount_7a_total,
                        b.amount_7q_7a_ac1, b.amount_7q_7a_ac2, b.amount_7q_7a_ac10, b.amount_7q_7a_ac21, b.amount_7q_7a_ac22, b.amount_7q_7a_total,
                        b.amount_14b_ac1, b.amount_14b_ac2, b.amount_14b_ac10, b.amount_14b_ac21, b.amount_14b_ac22, b.amount_14b_total,
-                       b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total
+                       b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total,
+                       b.demand_type, b.rrc_number, b.rrc_date
                 FROM bank_accounts b
                 JOIN establishments e ON e.id = b.establishment_id
                 WHERE b.eight_f_issued = 1

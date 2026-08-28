@@ -136,6 +136,34 @@
       font-size: 11px; color: #888; font-weight: 600;
     }
 
+    /* Demand radio */
+    .demand-radio {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+    .radio-opt {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .radio-opt input { margin: 0; cursor: pointer; }
+
+    /* RRC inline */
+    .rrc-inline {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      align-items: center;
+    }
+    .rrc-inline input {
+      width: 100%; padding: 5px 8px; border: 1px solid #d0d4dc;
+      border-radius: 4px; font-size: 11px; font-family: inherit;
+      min-width: 0;
+    }
+
     /* Dropdown */
     .dropdown { position: relative; }
     .dropdown-menu {
@@ -274,6 +302,9 @@
     .data-table .col-8f-no { width: 80px; }
     .data-table .col-8f-date { width: 110px; }
     .data-table .col-period { width: 140px; }
+    .data-table .col-demand { width: 80px; }
+    .data-table .col-rrc { width: 110px; }
+    .data-table .col-rrc-date { width: 110px; }
     .data-table .col-bank { min-width: 120px; }
     .data-table .col-branch { min-width: 100px; }
     .data-table .col-aeo { min-width: 160px; max-width: 200px; white-space: normal; word-break: normal; overflow-wrap: break-word; line-height: 1.3; }
@@ -355,7 +386,7 @@
       <div style="text-align:right;">
         <p id="userInfo" class="nav" style="margin:0; color:#666;"></p>
         <p class="nav" style="margin:2px 0 0; color:#333; font-size:11px; font-weight:600;" id="currentDateTime"></p>
-        <p class="nav" style="margin:2px 0 0; color:#999; font-size:10px;"><a href="#" id="versionLink" style="color:#4c51bf; text-decoration:none;">v1.0.0 → v1.2.6 (current)</a></p>
+        <p class="nav" style="margin:2px 0 0; color:#999; font-size:10px;"><a href="#" id="versionLink" style="color:#4c51bf; text-decoration:none;">v1.0.0 → v1.2.7 (current)</a></p>
       </div>
     </div>
 
@@ -445,6 +476,20 @@
                   </select>
                   <span>on</span>
                   <input type="date" id="payment_date" name="payment_date" />
+                </div>
+              </div>
+              <div class="field">
+                <label>Demand</label>
+                <div class="demand-radio">
+                  <label class="radio-opt"><input type="radio" name="demand_type" value="current" /> Current</label>
+                  <label class="radio-opt"><input type="radio" name="demand_type" value="arrear" /> Arrear</label>
+                </div>
+              </div>
+              <div class="field" id="rrcFields" style="display:none;">
+                <label>RRC</label>
+                <div class="rrc-inline">
+                  <input type="text" id="rrc_number" name="rrc_number" placeholder="RRC No." maxlength="30" />
+                  <input type="date" id="rrc_date" name="rrc_date" />
                 </div>
               </div>
             </div>
@@ -572,6 +617,9 @@
               <th class="col-acct">Account No</th>
               <th class="col-period">Period</th>
               <th class="col-total">Total</th>
+              <th class="col-demand">Demand</th>
+              <th class="col-rrc">RRC No</th>
+              <th class="col-rrc-date">RRC Date</th>
               <th class="col-status">Payment</th>
               <th class="col-8f">8F</th>
               <th>Actions</th>
@@ -617,6 +665,9 @@
               <th class="col-total">Grand Total</th>
               <th class="col-8f-no">8F No</th>
               <th class="col-8f-date">8F Date</th>
+              <th class="col-demand">Demand</th>
+              <th class="col-rrc">RRC No</th>
+              <th class="col-rrc-date">RRC Date</th>
               <th class="col-status">Payment</th>
               <th class="col-bank">Bank</th>
               <th class="col-ifsc">IFSC</th>
@@ -903,6 +954,23 @@
     }
 
     // ============================================================
+    // DEMAND TYPE & RRC
+    // ============================================================
+    function toggleRrcFields() {
+      const selected = document.querySelector('input[name="demand_type"]:checked');
+      const rrcFields = document.getElementById('rrcFields');
+      if (!rrcFields) return;
+      rrcFields.style.display = selected ? '' : 'none';
+      if (!selected) {
+        document.getElementById('rrc_number').value = '';
+        document.getElementById('rrc_date').value = '';
+      }
+    }
+    document.querySelectorAll('input[name="demand_type"]').forEach(r => {
+      r.addEventListener('change', toggleRrcFields);
+    });
+
+    // ============================================================
     // PERIOD (from/to) <-> hidden "period" field
     // ============================================================
     function setPeriod(p) {
@@ -1015,6 +1083,9 @@
       status.textContent = 'Saving...';
       status.className = 'status';
       const data = Object.fromEntries(new FormData(form).entries());
+      // demand_type is a radio button — FormData gives the selected value or nothing
+      const demandType = (document.querySelector('input[name="demand_type"]:checked') || {}).value || '';
+      data.demand_type = demandType;
       data.eight_f_issued = eightFCheckbox.checked;
       data.est_id = searchEl.value;
       data.est_name = nameEl.value;
@@ -1052,6 +1123,7 @@
       ifscFb.textContent = '';
       ifscFb.className = 'ifsc-feedback';
       clearExistingAccounts();
+      toggleRrcFields(); // hide RRC fields
       editingId = null;
       saveBtn.textContent = 'Save';
       cancelBtn.style.display = 'none';
@@ -1119,6 +1191,9 @@
                 ? `<input data-field="period" value="${escapeHtml(u.period || '')}" />`
                 : formatPeriodShort(u.period)}</td>
             <td class="col-total">${fmtMoney(u.total_amount)}</td>
+            <td class="col-demand">${escapeHtml((u.demand_type || '').toUpperCase() || '—')}</td>
+            <td class="col-rrc">${escapeHtml(u.rrc_number || '—')}</td>
+            <td class="col-rrc-date">${escapeHtml(u.rrc_date || '—')}</td>
             <td class="col-status"><span class="status-pill ${u.payment_status || 'pending'}">${escapeHtml((u.payment_status || 'pending').toUpperCase())}</span></td>
             <td class="col-8f">${u.eight_f_issued ? `<span class="status-pill issued">8F</span>` : '—'}</td>
             <td>
@@ -1178,6 +1253,12 @@
           document.getElementById('payment_status').value = record.payment_status || 'pending';
           document.getElementById('payment_date').value = record.payment_date || '';
           document.getElementById('aeo').value = record.aeo || '';
+          // Demand type and RRC
+          const dt = record.demand_type || '';
+          document.querySelectorAll('input[name="demand_type"]').forEach(r => { r.checked = (r.value === dt); });
+          document.getElementById('rrc_number').value = record.rrc_number || '';
+          document.getElementById('rrc_date').value = record.rrc_date || '';
+          toggleRrcFields();
           for (const sec of sectionNames) {
             for (const ac of acKeys) {
               const el = document.querySelector(`[name="amount_${sec}_${ac}"]`);
@@ -1304,6 +1385,9 @@
           <td class="col-total">${fmtMoney(r.total_amount)}</td>
           <td class="col-8f-no">${escapeHtml(r.eight_f_number || '—')}</td>
           <td class="col-8f-date">${escapeHtml(r.eight_f_issued_date || '—')}</td>
+          <td class="col-demand">${escapeHtml((r.demand_type || '').toUpperCase() || '—')}</td>
+          <td class="col-rrc">${escapeHtml(r.rrc_number || '—')}</td>
+          <td class="col-rrc-date">${escapeHtml(r.rrc_date || '—')}</td>
           <td class="col-status"><span class="status-pill ${r.payment_status || 'pending'}">${escapeHtml((r.payment_status || 'pending').toUpperCase())}</span></td>
           <td class="col-bank">${escapeHtml(r.bank_name || '—')}</td>
           <td class="col-ifsc">${escapeHtml(r.ifsc || '—')}</td>
@@ -1384,6 +1468,7 @@
 
     // Version History Modal (all times in IST/India)
     const VERSION_HISTORY = [
+      { v: "v1.2.7", date: "2026-08-28 09:05 IST", changes: ["Add Demand type (Current/Arrear) radio button to Payment card", "Add RRC No. and RRC Date fields (shown when demand is selected)", "Show Demand, RRC No, RRC Date columns in both Entered Bank Accounts and 8F Issued tables", "Auto-migrate existing database with new columns (demand_type, rrc_number, rrc_date)"] },
       { v: "v1.2.6", date: "2026-08-28 02:53 IST", changes: ["Optimize bank page load: lazy-load 48k establishments, parallel API calls, HTTP caching"] },
       { v: "v1.2.5", date: "2026-08-28 02:29 IST", changes: ["PDF: right-align amount columns (7A, 7Q(7A), 14B, 7Q(14B), Grand Total, Total)"] },
       { v: "v1.2.4", date: "2026-08-28 02:26 IST", changes: ["PDF: fix column widths to fit content", "IFSC/A/c No use plain strings to prevent breaking"] },
