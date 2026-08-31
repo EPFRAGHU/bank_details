@@ -22,3 +22,15 @@ def test_is_admin_false_for_other_email(client):
 def test_admin_backfill_email_is_a_configured_admin():
     assert app_module.admin_backfill_email() in app_module.ADMIN_EMAILS or \
         app_module.admin_backfill_email() == "raghunatha.maharana@gmail.com"
+
+
+def test_db_context_manager_closes_connection(client):
+    import app as app_module
+    with app_module._db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        assert cur.fetchone()[0] == 1
+    # After the with-block the connection must be closed.
+    import pytest
+    with pytest.raises(Exception):
+        conn.execute("SELECT 1")   # sqlite3.ProgrammingError / psycopg2 InterfaceError

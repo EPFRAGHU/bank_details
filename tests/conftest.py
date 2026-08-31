@@ -1,7 +1,6 @@
 import gc
 import os
 import tempfile
-import time
 
 import pytest
 
@@ -22,22 +21,13 @@ import app as app_module  # noqa: E402
 @pytest.fixture()
 def client():
     # Fresh schema + seed data for every test.
-    # The app opens connections via `with _connect() as conn:` and never closes
-    # them explicitly; on Windows the sqlite3 Connection/Cursor reference cycle
-    # keeps the file locked until a GC pass runs, so force one before deleting.
+    # The app now closes every connection deterministically via `with _db() as
+    # conn:` (Task C), so the temp SQLite file is no longer locked between
+    # tests. Keep a cheap gc.collect() as insurance since the app module still
+    # holds module-level state.
     gc.collect()
-    for _attempt in range(10):
-        if not os.path.exists(_DB_PATH):
-            break
-        try:
-            os.remove(_DB_PATH)
-            break
-        except PermissionError:
-            gc.collect()
-            time.sleep(0.05)
-    else:
-        if os.path.exists(_DB_PATH):
-            os.remove(_DB_PATH)  # last try: let the error surface
+    if os.path.exists(_DB_PATH):
+        os.remove(_DB_PATH)
     app_module.init_db()
     conn = app_module._connect()
     try:

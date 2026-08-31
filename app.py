@@ -9,6 +9,7 @@ import re
 import sqlite3
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from pathlib import Path
 
 from flask import Flask, Response, jsonify, render_template, request, session, redirect, url_for
@@ -66,6 +67,21 @@ def _connect(db_path: str = DB_PATH):
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+@contextmanager
+def _db(db_path: str = DB_PATH):
+    """Yield a DB connection and guarantee it is closed.
+
+    `with _connect() as conn:` only manages the transaction (commit/rollback);
+    it never closes the connection, which leaks handles (Postgres pool
+    exhaustion in production; locked SQLite files in tests). Write paths must
+    still call conn.commit() explicitly, exactly as they do today."""
+    conn = _connect(db_path)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def _to_float(v):
@@ -370,7 +386,7 @@ def init_db(db_path: str = DB_PATH) -> None:
     schema = SCHEMA_POSTGRES if USE_POSTGRES else SCHEMA_SQLITE
     if not USE_POSTGRES and not USE_TURSO:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    with _connect() as conn:
+    with _db() as conn:
         cur = conn.cursor()
         for table_name, ddl in schema.items():
             cur.execute(_translate_sql(ddl))
@@ -444,7 +460,7 @@ def onboard():
         return jsonify({"status": "error", "message": error}), 400
 
     try:
-        with _connect() as conn:
+        with _db() as conn:
             cur = conn.cursor()
             cur.execute(
                 _translate_sql(
@@ -471,7 +487,7 @@ def onboard():
 
 @app.route("/api/users", methods=["GET"])
 def list_users():
-    with _connect() as conn:
+    with _db() as conn:
         cur = conn.cursor()
         cur.execute(_translate_sql("SELECT id, full_name, email, phone, date_of_birth, country, created_at FROM onboarded_users ORDER BY id DESC"))
         rows = [_row_dict(r) for r in cur.fetchall()]
@@ -493,7 +509,7 @@ def api_login():
     password = payload.get("password") or ""
     if not email or not password:
         return jsonify({"status": "error", "message": "Email and password are required"}), 400
-    with _connect() as conn:
+    with _db() as conn:
         cur = conn.cursor()
         cur.execute(_translate_sql("SELECT id, full_name, email, password_hash FROM onboarded_users WHERE email = %s" if USE_POSTGRES else "SELECT id, full_name, email, password_hash FROM onboarded_users WHERE email = ?"), (email,))
         row = _row_dict(cur.fetchone())
@@ -549,7 +565,7 @@ def list_establishments():
     search = (request.args.get("q") or "").strip()
     limit_param = (request.args.get("limit") or "500").lower()
     limit = None if limit_param == "all" else min(max(int(limit_param), 1), 5000)
-    with _connect() as conn:
+    with _db() as conn:
         cur = conn.cursor()
         if search:
             like = f"%{search}%"
@@ -580,7 +596,7 @@ def list_establishments():
 def bank_accounts():
     if request.method == "GET":
         payment_status = (request.args.get("payment_status") or "").strip().lower()
-        with _connect() as conn:
+        with _db() as conn:
             cur = conn.cursor()
             sql = """
                 SELECT b.id, b.establishment_id, b.account_number, b.ifsc,
@@ -626,7 +642,7 @@ FROM bank_accounts b
     except (TypeError, ValueError):
         return jsonify({"status": "error", "message": "Invalid establishment_id"}), 400
 
-    with _connect() as conn:
+    with _db() as conn:
         cur = conn.cursor()
         cur.execute(_translate_sql("SELECT id FROM establishments WHERE id = %s" if USE_POSTGRES else "SELECT id FROM establishments WHERE id = ?"), (est_id,))
         if cur.fetchone() is None:
@@ -652,7 +668,7 @@ FROM bank_accounts b
     eight_f_issued_date = (payload.get("eight_f_issued_date") or "").strip() or None
 
     try:
-        with _connect() as conn:
+        with _db() as conn:
             cur = conn.cursor()
             insert_cols = "establishment_id, account_number, ifsc, code, bank_name, branch, address, city1, city2, district, state, phone, contact, aeo, period, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, total_amount, payment_status, payment_date, eight_f_issued, eight_f_number, eight_f_issued_date, demand_type, rrc_number, rrc_date"
             placeholders = ", ".join(["%s" if USE_POSTGRES else "?"] * 48)
@@ -735,7 +751,7 @@ FROM bank_accounts b
 @app.route("/api/bank-accounts/<int:bank_id>", methods=["GET", "PUT", "DELETE"])
 def bank_account_detail(bank_id: int):
     if request.method == "GET":
-        with _connect() as conn:
+        with _db() as conn:
             cur = conn.cursor()
             cur.execute(_translate_sql("""
                 SELECT b.id, b.establishment_id, b.account_number, b.ifsc,
@@ -760,7 +776,7 @@ def bank_account_detail(bank_id: int):
             return jsonify(_row_dict(row))
 
     if request.method == "DELETE":
-        with _connect() as conn:
+        with _db() as conn:
             cur = conn.cursor()
             cur.execute(_translate_sql("DELETE FROM bank_accounts WHERE id = %s" if USE_POSTGRES else "DELETE FROM bank_accounts WHERE id = ?"), (bank_id,))
             conn.commit()
@@ -838,7 +854,7 @@ def bank_account_detail(bank_id: int):
     )
 
     try:
-        with _connect() as conn:
+        with _db() as conn:
             cur = conn.cursor()
             cur.execute(update_sql, update_values)
             cur.execute(_translate_sql(f"SELECT eight_f_issued, establishment_id FROM bank_accounts WHERE id = {ph}"), (bank_id,))
@@ -890,7 +906,7 @@ def bank_account_detail(bank_id: int):
 
 @app.route("/api/epfo-8f", methods=["GET"])
 def list_epfo_8f():
-    with _connect() as conn:
+    with _db() as conn:
         cur = conn.cursor()
         # Source of truth: bank_accounts table. Always pull payment_status (and other live fields) from there.
         # UNION: explicit epfo_8f_records (with bank_accounts data) + bank_accounts with 8F issued but no record yet
@@ -1037,7 +1053,7 @@ def export_pdf():
     }
     col, reverse = sort_map.get(sort_key, ("est_id", False))
 
-    with _connect() as conn:
+    with _db() as conn:
         cur = conn.cursor()
         if tab == "8f":
             if USE_POSTGRES:
