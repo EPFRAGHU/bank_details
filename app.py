@@ -835,6 +835,17 @@ FROM bank_accounts b
 @app.route("/api/bank-accounts/<int:bank_id>", methods=["GET", "PUT", "DELETE"])
 @login_required
 def bank_account_detail(bank_id: int):
+    if request.method in ("PUT", "DELETE") and not is_admin():
+        with _db() as conn:
+            cur = conn.cursor()
+            cur.execute(_translate_sql(
+                "SELECT owner_email FROM bank_accounts WHERE id = ?"), (bank_id,))
+            owned = cur.fetchone()
+        owner = (_row_dict(owned) or {}).get("owner_email") if owned else None
+        if owned is None or (owner or "").strip().lower() != \
+                session.get("user_email", "").strip().lower():
+            return jsonify({"status": "error", "message": "Not found"}), 404
+
     if request.method == "GET":
         with _db() as conn:
             cur = conn.cursor()
@@ -948,14 +959,14 @@ def bank_account_detail(bank_id: int):
         with _db() as conn:
             cur = conn.cursor()
             cur.execute(update_sql, update_values)
-            cur.execute(_translate_sql(f"SELECT eight_f_issued, establishment_id FROM bank_accounts WHERE id = {ph}"), (bank_id,))
+            cur.execute(_translate_sql(f"SELECT eight_f_issued, establishment_id, owner_email FROM bank_accounts WHERE id = {ph}"), (bank_id,))
             row = cur.fetchone()
             was_issued = _row_dict(row) if row else None
             if was_issued and not was_issued.get("eight_f_issued") and str(payload.get("eight_f_issued")).lower() in {"1", "true", "on", "yes"}:
                 cur.execute(_translate_sql(f"SELECT est_id, est_name FROM establishments WHERE id = {ph}"), (was_issued["establishment_id"],))
                 est_row = _row_dict(cur.fetchone())
-                epfo_cols = "bank_account_id, establishment_id, est_id, est_name, aeo, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, city1, city2, district, state, phone, period, total_amount, payment_status, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, demand_type, rrc_number, rrc_date"
-                epfo_placeholders = ", ".join([ph] * 47)
+                epfo_cols = "bank_account_id, establishment_id, est_id, est_name, aeo, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, city1, city2, district, state, phone, period, total_amount, payment_status, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, demand_type, rrc_number, rrc_date, owner_email"
+                epfo_placeholders = ", ".join([ph] * 48)
                 epfo_sql = f"INSERT INTO epfo_8f_records ({epfo_cols}) VALUES ({epfo_placeholders})"
                 epfo_values = (
                     bank_id, was_issued["establishment_id"],
@@ -982,6 +993,7 @@ def bank_account_detail(bank_id: int):
                     (payload.get("demand_type") or "").strip().lower() or None,
                     (payload.get("rrc_number") or "").strip() or None,
                     (payload.get("rrc_date") or "").strip() or None,
+                    was_issued.get("owner_email"),
                 )
                 cur.execute(epfo_sql, epfo_values)
             conn.commit()
@@ -1003,6 +1015,9 @@ def list_epfo_8f():
         # Source of truth: bank_accounts table. Always pull payment_status (and other live fields) from there.
         # UNION: explicit epfo_8f_records (with bank_accounts data) + bank_accounts with 8F issued but no record yet
         union_cols = "id, bank_account_id, establishment_id, est_id, est_name, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, city1, city2, district, state, phone, period, total_amount, payment_status, created_at, aeo, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total"
+        scope_sql, scope_params = owner_scope_sql("b.owner_email")
+        first_scope = (" WHERE " + scope_sql.strip()[4:]) if scope_sql else ""
+        second_scope = scope_sql
         if USE_POSTGRES:
             cur.execute(_translate_sql(f"""
                 SELECT r.id, r.bank_account_id, r.establishment_id, r.est_id, r.est_name,
@@ -1014,9 +1029,9 @@ def list_epfo_8f():
                        b.amount_7q_7a_ac1, b.amount_7q_7a_ac2, b.amount_7q_7a_ac10, b.amount_7q_7a_ac21, b.amount_7q_7a_ac22, b.amount_7q_7a_total,
                        b.amount_14b_ac1, b.amount_14b_ac2, b.amount_14b_ac10, b.amount_14b_ac21, b.amount_14b_ac22, b.amount_14b_total,
                        b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total,
-                       b.demand_type, b.rrc_number, b.rrc_date
+                       b.demand_type, b.rrc_number, b.rrc_date, b.owner_email
                 FROM epfo_8f_records r
-                JOIN bank_accounts b ON b.id = r.bank_account_id
+                JOIN bank_accounts b ON b.id = r.bank_account_id{first_scope}
                 UNION
                 SELECT b.id + 1000000 AS id, b.id AS bank_account_id, b.establishment_id,
                        e.est_id, e.est_name, b.eight_f_number, b.eight_f_issued_date,
@@ -1027,13 +1042,13 @@ def list_epfo_8f():
                        b.amount_7q_7a_ac1, b.amount_7q_7a_ac2, b.amount_7q_7a_ac10, b.amount_7q_7a_ac21, b.amount_7q_7a_ac22, b.amount_7q_7a_total,
                        b.amount_14b_ac1, b.amount_14b_ac2, b.amount_14b_ac10, b.amount_14b_ac21, b.amount_14b_ac22, b.amount_14b_total,
                        b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total,
-                       b.demand_type, b.rrc_number, b.rrc_date
+                       b.demand_type, b.rrc_number, b.rrc_date, b.owner_email
                 FROM bank_accounts b
                 JOIN establishments e ON e.id = b.establishment_id
                 WHERE b.eight_f_issued = 1
-                  AND NOT EXISTS (SELECT 1 FROM epfo_8f_records r2 WHERE r2.bank_account_id = b.id)
+                  AND NOT EXISTS (SELECT 1 FROM epfo_8f_records r2 WHERE r2.bank_account_id = b.id){second_scope}
                 ORDER BY id DESC
-            """))
+            """), scope_params + scope_params)
         else:
             cur.execute(_translate_sql(f"""
                 SELECT r.id, r.bank_account_id, r.establishment_id, r.est_id, r.est_name,
@@ -1045,9 +1060,9 @@ def list_epfo_8f():
                        b.amount_7q_7a_ac1, b.amount_7q_7a_ac2, b.amount_7q_7a_ac10, b.amount_7q_7a_ac21, b.amount_7q_7a_ac22, b.amount_7q_7a_total,
                        b.amount_14b_ac1, b.amount_14b_ac2, b.amount_14b_ac10, b.amount_14b_ac21, b.amount_14b_ac22, b.amount_14b_total,
                        b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total,
-                       b.demand_type, b.rrc_number, b.rrc_date
+                       b.demand_type, b.rrc_number, b.rrc_date, b.owner_email
                 FROM epfo_8f_records r
-                JOIN bank_accounts b ON b.id = r.bank_account_id
+                JOIN bank_accounts b ON b.id = r.bank_account_id{first_scope}
                 UNION
                 SELECT b.id + 1000000 AS id, b.id AS bank_account_id, b.establishment_id,
                        e.est_id, e.est_name, b.eight_f_number, b.eight_f_issued_date,
@@ -1058,13 +1073,13 @@ def list_epfo_8f():
                        b.amount_7q_7a_ac1, b.amount_7q_7a_ac2, b.amount_7q_7a_ac10, b.amount_7q_7a_ac21, b.amount_7q_7a_ac22, b.amount_7q_7a_total,
                        b.amount_14b_ac1, b.amount_14b_ac2, b.amount_14b_ac10, b.amount_14b_ac21, b.amount_14b_ac22, b.amount_14b_total,
                        b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total,
-                       b.demand_type, b.rrc_number, b.rrc_date
+                       b.demand_type, b.rrc_number, b.rrc_date, b.owner_email
                 FROM bank_accounts b
                 JOIN establishments e ON e.id = b.establishment_id
                 WHERE b.eight_f_issued = 1
-                  AND NOT EXISTS (SELECT 1 FROM epfo_8f_records r2 WHERE r2.bank_account_id = b.id)
+                  AND NOT EXISTS (SELECT 1 FROM epfo_8f_records r2 WHERE r2.bank_account_id = b.id){second_scope}
                 ORDER BY id DESC
-            """))
+            """), scope_params + scope_params)
         rows = [_row_dict(r) for r in cur.fetchall()]
     return jsonify(rows)
 

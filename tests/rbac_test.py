@@ -146,3 +146,46 @@ def test_get_by_id_404_for_non_owner(client, login, est_ids):
 
     login(client, "admin@example.com", user_id=3)
     assert client.get(f"/api/bank-accounts/{row_id}").status_code == 200
+
+
+def _make_row(client, login, est_id, email, user_id):
+    login(client, email, user_id=user_id)
+    return client.post("/api/bank-accounts", json=make_bank_payload(est_id)).get_json()["id"]
+
+
+def test_put_and_delete_404_for_non_owner(client, login, est_ids):
+    row_id = _make_row(client, login, est_ids[0], "u1@example.com", 1)
+
+    login(client, "u2@example.com", user_id=2)
+    assert client.put(f"/api/bank-accounts/{row_id}",
+                      json=make_bank_payload(est_ids[0])).status_code == 404
+    assert client.delete(f"/api/bank-accounts/{row_id}").status_code == 404
+
+
+def test_owner_can_update_and_owner_email_is_stable(client, login, est_ids):
+    row_id = _make_row(client, login, est_ids[0], "u1@example.com", 1)
+    login(client, "u1@example.com", user_id=1)
+    r = client.put(f"/api/bank-accounts/{row_id}",
+                   json=make_bank_payload(est_ids[0], bank_name="Renamed Bank"))
+    assert r.status_code == 200
+    with app_module._db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT owner_email, bank_name FROM bank_accounts WHERE id = ?", (row_id,))
+        owner, bank = cur.fetchone()
+        assert owner == "u1@example.com" and bank == "Renamed Bank"
+
+
+def test_epfo_8f_list_scoped_to_owner(client, login, est_ids):
+    login(client, "u1@example.com", user_id=1)
+    client.post("/api/bank-accounts", json=make_bank_payload(
+        est_ids[0], eight_f_issued="true", eight_f_number="8F-1",
+        eight_f_issued_date="2021-01-01",
+        est_id="ORBBS0000000001", est_name="Alpha Establishment"))
+
+    login(client, "u2@example.com", user_id=2)
+    assert client.get("/api/epfo-8f").get_json() == []
+
+    login(client, "admin@example.com", user_id=3)
+    admin_view = client.get("/api/epfo-8f").get_json()
+    assert len(admin_view) == 1
+    assert admin_view[0]["owner_email"] == "u1@example.com"
