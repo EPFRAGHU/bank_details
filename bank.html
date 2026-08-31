@@ -607,6 +607,7 @@
           <option value="period">Sort: Period</option>
           <option value="payment_status">Sort: Payment</option>
         </select>
+        <select class="owner-filter" id="ownerFilter_bank"></select>
         <button id="refreshList">Refresh</button>
         <button class="btn-pdf" id="exportBankPdf">Export PDF</button>
       </div>
@@ -655,6 +656,7 @@
           <option value="period">Sort: Period</option>
           <option value="payment_status">Sort: Payment</option>
         </select>
+        <select class="owner-filter" id="ownerFilter_8f"></select>
         <button id="refreshEightF">Refresh</button>
         <button class="btn-pdf" id="exportEightFPdf">Export PDF</button>
       </div>
@@ -706,6 +708,7 @@
           <option value="period">Sort: Period</option>
           <option value="payment_status">Sort: Payment Status</option>
         </select>
+        <select class="owner-filter" id="ownerFilter_paid"></select>
         <button id="refreshPaidList">Refresh</button>
         <button class="btn-pdf" id="exportPaidPdf">Export PDF</button>
       </div>
@@ -757,6 +760,7 @@
           <option value="period">Sort: Period</option>
           <option value="payment_status">Sort: Payment Status</option>
         </select>
+        <select class="owner-filter" id="ownerFilter_pending"></select>
         <button id="refreshPendingList">Refresh</button>
         <button class="btn-pdf" id="exportPendingPdf">Export PDF</button>
       </div>
@@ -1290,8 +1294,11 @@
           (u.ifsc || '').toLowerCase().includes(q) ||
           (u.bank_name || '').toLowerCase().includes(q) ||
           (u.account_number || '').toLowerCase().includes(q) ||
+          (u.owner_email || '').toLowerCase().includes(q) ||
           (u.branch || '').toLowerCase().includes(q));
       }
+      const ownerVal = document.getElementById('ownerFilter_bank')?.value || '';
+      if (ownerVal) rows = rows.filter(u => (u.owner_email || '') === ownerVal);
       sortRecords(rows, document.getElementById('bankSortBy').value);
       document.getElementById('totalCount').textContent = rows.length;
       if (rows.length === 0) {
@@ -1509,8 +1516,11 @@
             (r.aeo || '').toLowerCase().includes(q) ||
             (r.ifsc || '').toLowerCase().includes(q) ||
             (r.bank_name || '').toLowerCase().includes(q) ||
+            (r.owner_email || '').toLowerCase().includes(q) ||
             (r.eight_f_number || '').toLowerCase().includes(q))
         : eightFRecords.slice();
+      const ownerVal = document.getElementById('ownerFilter_8f')?.value || '';
+      if (ownerVal) rows = rows.filter(r => (r.owner_email || '') === ownerVal);
       sortRecords(rows, document.getElementById('eightFSortBy').value);
       document.getElementById('eightFCount').textContent = rows.length;
       if (rows.length === 0) {
@@ -1588,8 +1598,12 @@
             (r.aeo || '').toLowerCase().includes(q) ||
             (r.ifsc || '').toLowerCase().includes(q) ||
             (r.bank_name || '').toLowerCase().includes(q) ||
+            (r.owner_email || '').toLowerCase().includes(q) ||
             (r.eight_f_number || '').toLowerCase().includes(q))
         : paidRecords.slice();
+
+      const ownerVal = document.getElementById('ownerFilter_paid')?.value || '';
+      if (ownerVal) rows = rows.filter(r => (r.owner_email || '') === ownerVal);
 
       sortRecords(rows, sortBy);
 
@@ -1651,8 +1665,12 @@
             (r.aeo || '').toLowerCase().includes(q) ||
             (r.ifsc || '').toLowerCase().includes(q) ||
             (r.bank_name || '').toLowerCase().includes(q) ||
+            (r.owner_email || '').toLowerCase().includes(q) ||
             (r.eight_f_number || '').toLowerCase().includes(q))
         : pendingRecords.slice();
+
+      const ownerVal = document.getElementById('ownerFilter_pending')?.value || '';
+      if (ownerVal) rows = rows.filter(r => (r.owner_email || '') === ownerVal);
 
       sortRecords(rows, sortBy);
 
@@ -1695,7 +1713,10 @@
     // PDF EXPORT
     // ============================================================
     function exportPdf(tab, sortBy) {
-      const url = `/api/export-pdf?tab=${encodeURIComponent(tab)}&sort=${encodeURIComponent(sortBy)}`;
+      let url = `/api/export-pdf?tab=${encodeURIComponent(tab)}&sort=${encodeURIComponent(sortBy)}`;
+      const key = tab === 'epfo-8f' ? '8f' : tab;
+      const ownerVal = document.getElementById('ownerFilter_' + key)?.value || '';
+      if (IS_ADMIN && ownerVal) url += `&owner=${encodeURIComponent(ownerVal)}`;
       window.open(url, '_blank');
     }
     document.getElementById('exportBankPdf').addEventListener('click', () => {
@@ -1721,6 +1742,23 @@
             document.body.classList.add('is-admin');
             const adminLink = document.getElementById('adminLink');
             if (adminLink) adminLink.style.display = '';
+            try {
+              const owners = await (await fetch('/api/entry-owners')).json();
+              const opts = '<option value="">All users</option>' +
+                owners.map(e => `<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`).join('');
+              ['bank', '8f', 'paid', 'pending'].forEach(t => {
+                const sel = document.getElementById('ownerFilter_' + t);
+                if (sel) {
+                  sel.innerHTML = opts;
+                  sel.addEventListener('change', () => {
+                    if (t === 'bank') renderRows();
+                    else if (t === '8f') renderEightFRows();
+                    else if (t === 'paid') renderPaidRows();
+                    else renderPendingRows();
+                  });
+                }
+              });
+            } catch (e) { /* leave dropdowns empty */ }
           }
           const userInfo = document.getElementById('userInfo');
           if (userInfo && meData.user) {
