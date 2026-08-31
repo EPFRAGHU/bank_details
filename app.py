@@ -23,6 +23,27 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 USE_TURSO = bool(TURSO_URL and TURSO_TOKEN)
 USE_POSTGRES = bool(DATABASE_URL and DATABASE_URL.startswith(("postgres://", "postgresql://")))
 
+ADMIN_EMAILS = {
+    e.strip().lower()
+    for e in os.getenv("ADMIN_EMAILS", "raghunatha.maharana@gmail.com").split(",")
+    if e.strip()
+}
+
+
+def current_role():
+    """'admin' if the logged-in email is in ADMIN_EMAILS, else 'user'."""
+    return "admin" if session.get("user_email", "").strip().lower() in ADMIN_EMAILS else "user"
+
+
+def is_admin():
+    return current_role() == "admin"
+
+
+def admin_backfill_email():
+    """The email pre-existing ownerless rows are assigned to."""
+    return sorted(ADMIN_EMAILS)[0] if ADMIN_EMAILS else "raghunatha.maharana@gmail.com"
+
+
 def _translate_sql(sql):
     """Translate SQLite ? placeholders to PostgreSQL %s if needed."""
     if USE_POSTGRES:
