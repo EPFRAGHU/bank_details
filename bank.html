@@ -309,6 +309,10 @@
     .data-table .col-branch { min-width: 100px; }
     .data-table .col-aeo { min-width: 160px; max-width: 200px; white-space: normal; word-break: normal; overflow-wrap: break-word; line-height: 1.3; }
     .data-table td.col-aeo { white-space: normal; word-break: normal; overflow-wrap: break-word; }
+    .col-owner { display: none; white-space: nowrap; }
+    body.is-admin .col-owner { display: table-cell; }
+    .owner-filter { display: none; }
+    body.is-admin .owner-filter { display: inline-block; }
     .data-table input, .data-table textarea {
       width: 100%; padding: 4px 6px; border: 1px solid #d0d4dc;
       border-radius: 4px; font-size: 11px; font-family: inherit; box-sizing: border-box;
@@ -386,7 +390,7 @@
       <div style="text-align:right;">
         <p id="userInfo" class="nav" style="margin:0; color:#666;"></p>
         <p class="nav" style="margin:2px 0 0; color:#333; font-size:11px; font-weight:600;" id="currentDateTime"></p>
-        <p class="nav" style="margin:2px 0 0; color:#999; font-size:10px;"><a href="#" id="versionLink" style="color:#4c51bf; text-decoration:none;">v1.0.0 → v1.2.8 (current)</a></p>
+        <p class="nav" style="margin:2px 0 0; color:#999; font-size:10px;"><a href="/admin" id="adminLink" style="display:none; margin-right:12px; color:#4c51bf; text-decoration:none;">Users</a><a href="#" id="versionLink" style="color:#4c51bf; text-decoration:none;">v1.0.0 → v1.2.8 (current)</a></p>
       </div>
     </div>
 
@@ -626,6 +630,7 @@
               <th class="col-status">Payment</th>
               <th class="col-8f">8F</th>
               <th>Actions</th>
+              <th class="col-owner">Entered By</th>
             </tr>
           </thead>
           <tbody id="bankRows"></tbody>
@@ -676,6 +681,7 @@
               <th class="col-bank">Bank</th>
               <th class="col-ifsc">IFSC</th>
               <th class="col-acct">Account No</th>
+              <th class="col-owner">Entered By</th>
             </tr>
           </thead>
           <tbody id="eightFRows"></tbody>
@@ -726,6 +732,7 @@
               <th class="col-bank">Bank</th>
               <th class="col-ifsc">IFSC</th>
               <th class="col-acct">Account No</th>
+              <th class="col-owner">Entered By</th>
             </tr>
           </thead>
           <tbody id="paidRows"></tbody>
@@ -776,6 +783,7 @@
               <th class="col-bank">Bank</th>
               <th class="col-ifsc">IFSC</th>
               <th class="col-acct">Account No</th>
+              <th class="col-owner">Entered By</th>
             </tr>
           </thead>
           <tbody id="pendingRows"></tbody>
@@ -822,6 +830,7 @@
     let eightFRecords = [];
     let paidRecords = [];
     let pendingRecords = [];
+    let IS_ADMIN = false;
 
     // ============================================================
     // HELPERS
@@ -1331,6 +1340,7 @@
                      <button class="btn-delete" data-action="delete">Delete</button>`}
               </div>
             </td>
+            <td class="col-owner">${escapeHtml(u.owner_email || '—')}</td>
           </tr>
         `;
       }).join('');
@@ -1533,6 +1543,7 @@
           <td class="col-bank">${escapeHtml(r.bank_name || '—')}</td>
           <td class="col-ifsc">${escapeHtml(r.ifsc || '—')}</td>
           <td class="col-acct">${escapeHtml(r.account_number || '—')}</td>
+          <td class="col-owner">${escapeHtml(r.owner_email || '—')}</td>
         </tr>
       `}).join('');
     }
@@ -1612,6 +1623,7 @@
           <td class="col-bank">${escapeHtml(r.bank_name || '—')}</td>
           <td class="col-ifsc">${escapeHtml(r.ifsc || '—')}</td>
           <td class="col-acct">${escapeHtml(r.account_number || '—')}</td>
+          <td class="col-owner">${escapeHtml(r.owner_email || '—')}</td>
         </tr>
       `}).join('');
     }
@@ -1674,6 +1686,7 @@
           <td class="col-bank">${escapeHtml(r.bank_name || '—')}</td>
           <td class="col-ifsc">${escapeHtml(r.ifsc || '—')}</td>
           <td class="col-acct">${escapeHtml(r.account_number || '—')}</td>
+          <td class="col-owner">${escapeHtml(r.owner_email || '—')}</td>
         </tr>
       `}).join('');
     }
@@ -1703,6 +1716,12 @@
         const meRes = await fetch('/api/me');
         if (meRes.ok) {
           const meData = await meRes.json();
+          IS_ADMIN = meData.role === 'admin';
+          if (IS_ADMIN) {
+            document.body.classList.add('is-admin');
+            const adminLink = document.getElementById('adminLink');
+            if (adminLink) adminLink.style.display = '';
+          }
           const userInfo = document.getElementById('userInfo');
           if (userInfo && meData.user) {
             userInfo.innerHTML = `Logged in as <strong>${meData.user.name}</strong> | <a href="#" id="logoutLink">Logout</a>`;
