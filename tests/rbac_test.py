@@ -63,3 +63,43 @@ def test_backfill_assigns_null_owner_rows_to_admin(client, est_ids):
 def test_init_db_is_idempotent(client):
     app_module.init_db()
     app_module.init_db()  # must not raise
+
+
+PROTECTED_API = [
+    ("GET", "/api/bank-accounts"),
+    ("GET", "/api/bank-accounts/1"),
+    ("GET", "/api/epfo-8f"),
+    ("GET", "/api/establishments"),
+    ("GET", "/api/export-pdf?tab=bank"),
+    ("GET", "/api/ifsc/SBIN0001234"),
+]
+
+
+def test_protected_api_requires_login(client):
+    for method, path in PROTECTED_API:
+        resp = client.open(path, method=method)
+        assert resp.status_code == 401, f"{method} {path} -> {resp.status_code}"
+
+
+def test_bank_page_redirects_when_logged_out(client):
+    resp = client.get("/bank")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
+def test_admin_routes_forbidden_for_regular_user(client, login):
+    login(client, "user@example.com")
+    for path in ("/api/users", "/api/entry-owners"):
+        assert client.get(path).status_code == 403
+    assert client.get("/admin").status_code == 403
+
+
+def test_admin_routes_ok_for_admin(client, login):
+    login(client, "admin@example.com")
+    assert client.get("/api/users").status_code == 200
+    assert client.get("/admin").status_code == 200
+
+
+def test_login_page_still_public(client):
+    assert client.get("/login").status_code == 200
+    assert client.get("/signup").status_code == 200

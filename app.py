@@ -10,6 +10,7 @@ import sqlite3
 import urllib.error
 import urllib.request
 from contextlib import contextmanager
+from functools import wraps
 from pathlib import Path
 
 from flask import Flask, Response, jsonify, render_template, request, session, redirect, url_for
@@ -43,6 +44,37 @@ def is_admin():
 def admin_backfill_email():
     """The email pre-existing ownerless rows are assigned to."""
     return sorted(ADMIN_EMAILS)[0] if ADMIN_EMAILS else "raghunatha.maharana@gmail.com"
+
+
+def _auth_fail(status, message):
+    if request.path.startswith("/api/"):
+        return jsonify({"status": "error", "message": message}), status
+    if status == 401:
+        return redirect("/login")
+    return Response(
+        f"<h1>403 — {message}</h1><p><a href='/bank'>Back to Bank</a></p>",
+        status=403, mimetype="text/html",
+    )
+
+
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not session.get("user_id"):
+            return _auth_fail(401, "Login required")
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def admin_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not session.get("user_id"):
+            return _auth_fail(401, "Login required")
+        if not is_admin():
+            return _auth_fail(403, "Admin access required")
+        return f(*args, **kwargs)
+    return wrapper
 
 
 def _translate_sql(sql):
@@ -506,12 +538,19 @@ def onboard():
 
 
 @app.route("/api/users", methods=["GET"])
+@admin_required
 def list_users():
     with _db() as conn:
         cur = conn.cursor()
         cur.execute(_translate_sql("SELECT id, full_name, email, phone, date_of_birth, country, created_at FROM onboarded_users ORDER BY id DESC"))
         rows = [_row_dict(r) for r in cur.fetchall()]
     return jsonify(rows)
+
+
+@app.route("/api/entry-owners", methods=["GET"])
+@admin_required
+def entry_owners():
+    return jsonify([])
 
 
 @app.route("/login", methods=["GET"])
@@ -566,12 +605,14 @@ def api_me():
 
 
 @app.route("/admin", methods=["GET"])
+@admin_required
 def admin():
     html = render_template("admin.html")
     return Response(html, headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
 
 @app.route("/bank", methods=["GET"])
+@login_required
 def bank_page():
     # Serve bank.html directly as a static file to avoid Jinja2 template caching.
     bank_html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bank.html")
@@ -581,6 +622,7 @@ def bank_page():
 
 
 @app.route("/api/establishments", methods=["GET"])
+@login_required
 def list_establishments():
     search = (request.args.get("q") or "").strip()
     limit_param = (request.args.get("limit") or "500").lower()
@@ -613,6 +655,7 @@ def list_establishments():
 
 
 @app.route("/api/bank-accounts", methods=["GET", "POST"])
+@login_required
 def bank_accounts():
     if request.method == "GET":
         payment_status = (request.args.get("payment_status") or "").strip().lower()
@@ -769,6 +812,7 @@ FROM bank_accounts b
 
 
 @app.route("/api/bank-accounts/<int:bank_id>", methods=["GET", "PUT", "DELETE"])
+@login_required
 def bank_account_detail(bank_id: int):
     if request.method == "GET":
         with _db() as conn:
@@ -925,6 +969,7 @@ def bank_account_detail(bank_id: int):
 
 
 @app.route("/api/epfo-8f", methods=["GET"])
+@login_required
 def list_epfo_8f():
     with _db() as conn:
         cur = conn.cursor()
@@ -1045,6 +1090,7 @@ def _para(text, style_name="cell"):
 
 
 @app.route("/api/export-pdf", methods=["GET"])
+@login_required
 def export_pdf():
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
@@ -1260,6 +1306,7 @@ def export_pdf():
 
 
 @app.route("/api/ifsc/<code>", methods=["GET"])
+@login_required
 def ifsc_lookup(code: str):
     code = (code or "").strip().upper()
     if len(code) != 11:
