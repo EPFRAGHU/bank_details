@@ -561,7 +561,11 @@ def list_users():
 @app.route("/api/entry-owners", methods=["GET"])
 @admin_required
 def entry_owners():
-    return jsonify([])
+    with _db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT DISTINCT owner_email FROM bank_accounts "
+                    "WHERE owner_email IS NOT NULL ORDER BY owner_email")
+        return jsonify([_row_dict(r)["owner_email"] for r in cur.fetchall()])
 
 
 @app.route("/login", methods=["GET"])
@@ -607,6 +611,7 @@ def api_me():
         return jsonify({"status": "error", "message": "Not logged in"}), 401
     return jsonify({
         "status": "ok",
+        "role": current_role(),
         "user": {
             "id": session.get("user_id"),
             "name": session.get("user_name"),

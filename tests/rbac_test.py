@@ -232,3 +232,27 @@ def test_epfo_8f_list_scoped_to_owner(client, login, est_ids):
     admin_view = client.get("/api/epfo-8f").get_json()
     assert len(admin_view) == 1
     assert admin_view[0]["owner_email"] == "u1@example.com"
+
+
+def test_api_me_includes_role(client, login):
+    login(client, "admin@example.com")
+    assert client.get("/api/me").get_json()["role"] == "admin"
+    login(client, "user@example.com")
+    assert client.get("/api/me").get_json()["role"] == "user"
+
+
+def test_entry_owners_lists_distinct_emails_for_admin(client, login, est_ids):
+    login(client, "u1@example.com", user_id=1)
+    client.post("/api/bank-accounts", json=make_bank_payload(est_ids[0]))
+    login(client, "u2@example.com", user_id=2)
+    client.post("/api/bank-accounts", json=make_bank_payload(est_ids[1]))
+    client.post("/api/bank-accounts", json=make_bank_payload(est_ids[0]))
+
+    login(client, "admin@example.com", user_id=3)
+    owners = client.get("/api/entry-owners").get_json()
+    assert owners == ["u1@example.com", "u2@example.com"]
+
+
+def test_entry_owners_403_for_user(client, login):
+    login(client, "user@example.com")
+    assert client.get("/api/entry-owners").status_code == 403
