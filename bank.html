@@ -386,7 +386,7 @@
       <div style="text-align:right;">
         <p id="userInfo" class="nav" style="margin:0; color:#666;"></p>
         <p class="nav" style="margin:2px 0 0; color:#333; font-size:11px; font-weight:600;" id="currentDateTime"></p>
-        <p class="nav" style="margin:2px 0 0; color:#999; font-size:10px;"><a href="#" id="versionLink" style="color:#4c51bf; text-decoration:none;">v1.0.0 → v1.2.7 (current)</a></p>
+        <p class="nav" style="margin:2px 0 0; color:#999; font-size:10px;"><a href="#" id="versionLink" style="color:#4c51bf; text-decoration:none;">v1.0.0 → v1.2.8 (current)</a></p>
       </div>
     </div>
 
@@ -1745,6 +1745,7 @@
 
     // Version History Modal (all times in IST/India)
     const VERSION_HISTORY = [
+      { v: "v1.2.8", date: "2026-09-01 01:45 IST", changes: ["Fix: app failed to start (missing render_template import, export_pdf indentation)", "Fix: bank page JavaScript was inert (missing <script> tag, paidSearchEl reference-before-init)", "Fix: PDF export 'Sort: Amount' crashed with a 500 error", "Fix: editing a bank account no longer drops Demand / RRC No / RRC Date", "Sorting dropdown now works on all list tabs (was a no-op on Entered Bank Accounts and 8F Issued)", "Entered Bank Accounts filter now also matches the AEO field", "Add 'Sort: Payment' option to Entered Bank Accounts and 8F Issued tabs", "Remove leftover debug logging from the server"] },
       { v: "v1.2.7", date: "2026-08-28 09:05 IST", changes: ["Add Demand type (Current/Arrear) radio button to Payment card", "Add RRC No. and RRC Date fields (shown when demand is selected)", "Show Demand, RRC No, RRC Date columns in both Entered Bank Accounts and 8F Issued tables", "Auto-migrate existing database with new columns (demand_type, rrc_number, rrc_date)"] },
       { v: "v1.2.6", date: "2026-08-28 02:53 IST", changes: ["Optimize bank page load: lazy-load 48k establishments, parallel API calls, HTTP caching"] },
       { v: "v1.2.5", date: "2026-08-28 02:29 IST", changes: ["PDF: right-align amount columns (7A, 7Q(7A), 14B, 7Q(14B), Grand Total, Total)"] },

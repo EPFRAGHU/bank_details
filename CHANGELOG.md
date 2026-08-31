@@ -1,5 +1,21 @@
 # Changelog
 
+## [2026-09-01] — v1.2.8
+
+### Fixed
+- **App would not start** — restored `render_template` import + `template_folder="."` (login/signup/admin returned 500); fixed an `IndentationError` in `export_pdf()` that stopped the module importing
+- **Bank page JavaScript was completely inert** — re-added the lost opening `<script>` tag (page JS rendered as text); fixed a temporal-dead-zone `ReferenceError` on `paidSearchEl` / `pendingSearchEl`
+- **PDF export "Sort: Amount" returned 500** — numeric/blank comparison error, fixed via new `_sort_records()` helper
+- **Editing a bank account silently dropped `demand_type` / `rrc_number` / `rrc_date`** — `PUT /api/bank-accounts/<id>` now persists them (and includes them in the 8F-sync insert)
+- **Sorting dropdown did nothing on the Entered Bank Accounts and 8F Issued tabs** — no change listener and no sort logic; now sorts via a shared `sortRecords()` helper on all four list tabs (also fixes `Sort: Bank` looking up the wrong field)
+- **Entered Bank Accounts filter ignored the AEO field** — now matched alongside est code / name / IFSC / bank / account / branch
+
+### Added
+- **Entered Bank Accounts** and **8F Issued** tabs: `Sort: Payment` option in the sort dropdown
+
+### Removed
+- Debug logging left in `app.py` (module-load prints, per-request logger, custom 500 handler, HTML-comment injection in `/bank`)
+
 ## [2026-08-28] — v1.2.7 (Auto-bumped)
 
 ### Added

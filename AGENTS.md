@@ -118,7 +118,7 @@
 
 ## Current Development Status
 
-**Last Completed:** v1.2.7 — Add Demand type (Current/Arrear) + RRC No. and RRC Date fields
+**Last Completed:** v1.2.8 — Fix unrunnable app + dead bank-page JS, PDF sort crash, PUT dropping Demand/RRC fields; working sort/filter on all list tabs + "Sort: Payment" option; removed debug code
 
 **Currently Working On:** Saving to memory
 
@@ -133,18 +133,22 @@
 - Period displays as MM/YYYY (e.g. 01/2005 to 05/2010)
 - AEO column properly wraps
 - Running IST clock + clickable version history modal
-- Version auto-bumps on every change (v1.2.7 current)
-- Demand type (Current/Arrear) radio + RRC No./Date fields
+- Version manually maintained (v1.2.8 current) — bump in bank.html label + VERSION_HISTORY, AGENTS.md, CHANGELOG.md
+- Demand type (Current/Arrear) radio + RRC No./Date fields; persisted on both create and edit
 - Tables show Demand, RRC No, RRC Date columns
 - Database auto-migrates new columns backward-compatibly
+- List tabs: working sort dropdown (shared sortRecords helper) + AEO in the Entered Bank Accounts filter
+- /bank served as a static file (not via render_template)
 
 **Next Tasks:**
 1. ✅ v1.2.7 — Demand/RRC fields (completed)
-2. ✅ Memory save (in progress)
+2. ✅ v1.2.8 — Stability fixes + list sort/filter + "Sort: Payment" (completed)
 3. User acceptance testing
 4. Future feature additions
 
-**Unresolved Issues:** None critical.
+**Unresolved Issues:**
+- Version-history modal only opens when logged in (handler registered inside the `/api/me` ok block) — pre-existing, low severity
+- Untracked scratch files in repo root (`debug_*.py`, `full_test.py`, `quick_test.py`, `verify.py`, etc.) and `.serena/` not gitignored
 
 **Git Repository:** `https://github.com/EPFRAGHU/bank_details.git` (branch: main)
 
@@ -175,7 +179,8 @@
 - v1.2.4 — PDF column widths
 - v1.2.5 — PDF right-align amounts
 - v1.2.6 — Optimize bank page load
-- v1.2.7 — Demand type + RRC fields (current)
+- v1.2.7 — Demand type + RRC fields
+- v1.2.8 — Stability fixes (startup, dead page JS, PDF sort, PUT Demand/RRC), working list sort/filter, "Sort: Payment" option, debug cleanup (current)
 
 **Database Schema (current):**
 - `onboarded_users`: id, full_name, email, phone, date_of_birth, country, password_hash, created_at
