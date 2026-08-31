@@ -34,3 +34,32 @@ def test_db_context_manager_closes_connection(client):
     import pytest
     with pytest.raises(Exception):
         conn.execute("SELECT 1")   # sqlite3.ProgrammingError / psycopg2 InterfaceError
+
+
+def test_owner_email_columns_exist(client):
+    with app_module._db() as conn:
+        cur = conn.cursor()
+        for table in ("bank_accounts", "epfo_8f_records"):
+            cur.execute(f"PRAGMA table_info({table})")
+            cols = [r[1] for r in cur.fetchall()]
+            assert "owner_email" in cols, f"{table} missing owner_email"
+
+
+def test_backfill_assigns_null_owner_rows_to_admin(client, est_ids):
+    # Simulate a pre-existing row with no owner, then re-run init_db().
+    with app_module._db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO bank_accounts (establishment_id, account_number, ifsc, bank_name) "
+            "VALUES (?, ?, ?, ?)", (est_ids[0], "999999999999", "SBIN0009999", "Test Bank"))
+        conn.commit()
+    app_module.init_db()
+    with app_module._db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT owner_email FROM bank_accounts WHERE account_number = '999999999999'")
+        assert cur.fetchone()[0] == app_module.admin_backfill_email()
+
+
+def test_init_db_is_idempotent(client):
+    app_module.init_db()
+    app_module.init_db()  # must not raise

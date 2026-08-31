@@ -186,6 +186,7 @@ SCHEMA_SQLITE = {
             demand_type TEXT,
             rrc_number TEXT,
             rrc_date TEXT,
+            owner_email TEXT,
             FOREIGN KEY (establishment_id) REFERENCES establishments(id) ON DELETE CASCADE
         )
     """,
@@ -240,6 +241,7 @@ SCHEMA_SQLITE = {
             demand_type TEXT,
             rrc_number TEXT,
             rrc_date TEXT,
+            owner_email TEXT,
             FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id) ON DELETE CASCADE,
             FOREIGN KEY (establishment_id) REFERENCES establishments(id) ON DELETE CASCADE
         )
@@ -322,7 +324,8 @@ SCHEMA_POSTGRES = {
             aeo TEXT,
             demand_type TEXT,
             rrc_number TEXT,
-            rrc_date TEXT
+            rrc_date TEXT,
+            owner_email TEXT
         )
     """,
     "epfo_8f_records": """
@@ -375,7 +378,8 @@ SCHEMA_POSTGRES = {
             created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
             demand_type TEXT,
             rrc_number TEXT,
-            rrc_date TEXT
+            rrc_date TEXT,
+            owner_email TEXT
         )
     """,
 }
@@ -392,7 +396,8 @@ def init_db(db_path: str = DB_PATH) -> None:
             cur.execute(_translate_sql(ddl))
         # Backward-compatible migrations for existing tables
         for table in ("bank_accounts", "epfo_8f_records"):
-            for col, col_type in [("demand_type", "TEXT"), ("rrc_number", "TEXT"), ("rrc_date", "TEXT")]:
+            for col, col_type in [("demand_type", "TEXT"), ("rrc_number", "TEXT"),
+                                  ("rrc_date", "TEXT"), ("owner_email", "TEXT")]:
                 if USE_POSTGRES:
                     cur.execute(
                         "SELECT 1 FROM information_schema.columns WHERE table_name = %s AND column_name = %s",
@@ -407,6 +412,21 @@ def init_db(db_path: str = DB_PATH) -> None:
                         cur.execute(_translate_sql(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
             if USE_POSTGRES:
                 conn.commit()
+        # Backfill ownerless rows to the backfill admin, then index owner_email.
+        backfill = admin_backfill_email()
+        for table in ("bank_accounts", "epfo_8f_records"):
+            cur.execute(
+                _translate_sql(f"UPDATE {table} SET owner_email = ? WHERE owner_email IS NULL"),
+                (backfill,),
+            )
+        idx_stmts = [
+            "CREATE INDEX IF NOT EXISTS idx_bank_accounts_owner ON bank_accounts(owner_email)",
+            "CREATE INDEX IF NOT EXISTS idx_epfo_8f_records_owner ON epfo_8f_records(owner_email)",
+        ]
+        for stmt in idx_stmts:
+            cur.execute(stmt)
+        if USE_POSTGRES:
+            conn.commit()
         if not USE_POSTGRES:
             conn.commit()
 
