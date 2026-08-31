@@ -13,16 +13,15 @@ from pathlib import Path
 
 from flask import Flask, Response, jsonify, render_template, request, session, redirect, url_for
 
+app = Flask(__name__, template_folder=".")
+app.secret_key = os.getenv("SECRET_KEY", "change-me-in-production-" + os.urandom(16).hex())
+
 DB_PATH = os.getenv("ONBOARDING_DB", "logs/onboarding.sqlite3")
 TURSO_URL = os.getenv("TURSO_URL", "").strip()
 TURSO_TOKEN = os.getenv("TURSO_TOKEN", "").strip()
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 USE_TURSO = bool(TURSO_URL and TURSO_TOKEN)
 USE_POSTGRES = bool(DATABASE_URL and DATABASE_URL.startswith(("postgres://", "postgresql://")))
-
-app = Flask(__name__, template_folder=".")
-app.secret_key = os.getenv("SECRET_KEY", "change-me-in-production-" + os.urandom(16).hex())
-
 
 def _translate_sql(sql):
     """Translate SQLite ? placeholders to PostgreSQL %s if needed."""
@@ -83,7 +82,7 @@ SCHEMA_SQLITE = {
             date_of_birth TEXT,
             country TEXT NOT NULL,
             password_hash TEXT NOT NULL,
-            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text)
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
     """,
     "establishments": """
@@ -145,7 +144,7 @@ SCHEMA_SQLITE = {
             eight_f_issued INTEGER DEFAULT 0,
             eight_f_number TEXT,
             eight_f_issued_date TEXT,
-            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
             aeo TEXT,
             demand_type TEXT,
             rrc_number TEXT,
@@ -200,7 +199,7 @@ SCHEMA_SQLITE = {
             amount_7q_14b_ac21 REAL DEFAULT 0,
             amount_7q_14b_ac22 REAL DEFAULT 0,
             amount_7q_14b_total REAL DEFAULT 0,
-            created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP::text),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
             demand_type TEXT,
             rrc_number TEXT,
             rrc_date TEXT,
@@ -517,8 +516,11 @@ def admin():
 
 @app.route("/bank", methods=["GET"])
 def bank_page():
-    html = render_template("bank.html")
-    return Response(html, headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
+    # Serve bank.html directly as a static file to avoid Jinja2 template caching.
+    bank_html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bank.html")
+    with open(bank_html_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    return Response(content, mimetype="text/html", headers={"Cache-Control": "no-store, no-cache, must-revalidate, max-age=0"})
 
 
 @app.route("/api/establishments", methods=["GET"])
@@ -556,26 +558,32 @@ def list_establishments():
 @app.route("/api/bank-accounts", methods=["GET", "POST"])
 def bank_accounts():
     if request.method == "GET":
+        payment_status = (request.args.get("payment_status") or "").strip().lower()
         with _connect() as conn:
             cur = conn.cursor()
-            cur.execute(_translate_sql("""
+            sql = """
                 SELECT b.id, b.establishment_id, b.account_number, b.ifsc,
-                       b.code, b.bank_name, b.branch, b.address, b.city1, b.city2,
-                       b.district, b.state, b.phone, b.contact, b.aeo, b.created_at,
-                       b.period,
-                       b.amount_7a_ac1, b.amount_7a_ac2, b.amount_7a_ac10, b.amount_7a_ac21, b.amount_7a_ac22, b.amount_7a_total,
-                       b.amount_7q_7a_ac1, b.amount_7q_7a_ac2, b.amount_7q_7a_ac10, b.amount_7q_7a_ac21, b.amount_7q_7a_ac22, b.amount_7q_7a_total,
-                       b.amount_14b_ac1, b.amount_14b_ac2, b.amount_14b_ac10, b.amount_14b_ac21, b.amount_14b_ac22, b.amount_14b_total,
-                       b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total,
-                       b.total_amount,
-                       b.payment_status, b.payment_date, b.eight_f_issued,
-                       b.eight_f_number, b.eight_f_issued_date,
-                       b.demand_type, b.rrc_number, b.rrc_date,
-                       e.est_id, e.est_name
-                FROM bank_accounts b
-                JOIN establishments e ON e.id = b.establishment_id
-                ORDER BY b.id DESC
-            """))
+                b.code, b.bank_name, b.branch, b.address, b.city1, b.city2,
+                b.district, b.state, b.phone, b.contact, b.aeo, b.created_at,
+                b.period,
+                b.amount_7a_ac1, b.amount_7a_ac2, b.amount_7a_ac10, b.amount_7a_ac21, b.amount_7a_ac22, b.amount_7a_total,
+                b.amount_7q_7a_ac1, b.amount_7q_7a_ac2, b.amount_7q_7a_ac10, b.amount_7q_7a_ac21, b.amount_7q_7a_ac22, b.amount_7q_7a_total,
+                b.amount_14b_ac1, b.amount_14b_ac2, b.amount_14b_ac10, b.amount_14b_ac21, b.amount_14b_ac22, b.amount_14b_total,
+                b.amount_7q_14b_ac1, b.amount_7q_14b_ac2, b.amount_7q_14b_ac10, b.amount_7q_14b_ac21, b.amount_7q_14b_ac22, b.amount_7q_14b_total,
+                b.total_amount,
+                b.payment_status, b.payment_date, b.eight_f_issued,
+                b.eight_f_number, b.eight_f_issued_date,
+                b.demand_type, b.rrc_number, b.rrc_date,
+                e.est_id, e.est_name
+FROM bank_accounts b
+                 JOIN establishments e ON e.id = b.establishment_id
+            """
+            params = []
+            if payment_status in ("paid", "pending"):
+                sql += " WHERE LOWER(b.payment_status) = %s" if USE_POSTGRES else " WHERE LOWER(b.payment_status) = ?"
+                params.append(payment_status)
+            sql += " ORDER BY b.id DESC"
+            cur.execute(_translate_sql(sql), params)
             data = [_row_dict(r) for r in cur.fetchall()]
         return jsonify(data)
 
@@ -776,7 +784,8 @@ def bank_account_detail(bank_id: int):
         amount_14b_ac1 = {ph}, amount_14b_ac2 = {ph}, amount_14b_ac10 = {ph}, amount_14b_ac21 = {ph}, amount_14b_ac22 = {ph}, amount_14b_total = {ph},
         amount_7q_14b_ac1 = {ph}, amount_7q_14b_ac2 = {ph}, amount_7q_14b_ac10 = {ph}, amount_7q_14b_ac21 = {ph}, amount_7q_14b_ac22 = {ph}, amount_7q_14b_total = {ph},
         total_amount = {ph}, payment_status = {ph}, payment_date = {ph}, eight_f_issued = {ph},
-        eight_f_number = {ph}, eight_f_issued_date = {ph}
+        eight_f_number = {ph}, eight_f_issued_date = {ph},
+        demand_type = {ph}, rrc_number = {ph}, rrc_date = {ph}
         WHERE id = {ph}"""
 
     update_values = (
@@ -801,6 +810,9 @@ def bank_account_detail(bank_id: int):
         1 if str(payload.get("eight_f_issued")).lower() in {"1", "true", "on", "yes"} else 0,
         (payload.get("eight_f_number") or "").strip() or None,
         (payload.get("eight_f_issued_date") or "").strip() or None,
+        (payload.get("demand_type") or "").strip().lower() or None,
+        (payload.get("rrc_number") or "").strip() or None,
+        (payload.get("rrc_date") or "").strip() or None,
         bank_id,
     )
 
@@ -814,8 +826,8 @@ def bank_account_detail(bank_id: int):
             if was_issued and not was_issued.get("eight_f_issued") and str(payload.get("eight_f_issued")).lower() in {"1", "true", "on", "yes"}:
                 cur.execute(_translate_sql(f"SELECT est_id, est_name FROM establishments WHERE id = {ph}"), (was_issued["establishment_id"],))
                 est_row = _row_dict(cur.fetchone())
-                epfo_cols = "bank_account_id, establishment_id, est_id, est_name, aeo, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, city1, city2, district, state, phone, period, total_amount, payment_status, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total"
-                epfo_placeholders = ", ".join([ph] * 44)
+                epfo_cols = "bank_account_id, establishment_id, est_id, est_name, aeo, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, city1, city2, district, state, phone, period, total_amount, payment_status, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, demand_type, rrc_number, rrc_date"
+                epfo_placeholders = ", ".join([ph] * 47)
                 epfo_sql = f"INSERT INTO epfo_8f_records ({epfo_cols}) VALUES ({epfo_placeholders})"
                 epfo_values = (
                     bank_id, was_issued["establishment_id"],
@@ -839,6 +851,9 @@ def bank_account_detail(bank_id: int):
                     *section_amounts["7q_7a"], section_totals["7q_7a"],
                     *section_amounts["14b"], section_totals["14b"],
                     *section_amounts["7q_14b"], section_totals["7q_14b"],
+                    (payload.get("demand_type") or "").strip().lower() or None,
+                    (payload.get("rrc_number") or "").strip() or None,
+                    (payload.get("rrc_date") or "").strip() or None,
                 )
                 cur.execute(epfo_sql, epfo_values)
             conn.commit()
@@ -956,6 +971,14 @@ def _fmt_address(addr):
     return s if s else "—"
 
 
+def _sort_records(records, col, reverse):
+    """Sort export records by a column, handling numeric vs text columns safely."""
+    if col == "total_amount":
+        records.sort(key=lambda r: _to_float(r.get(col)), reverse=reverse)
+    else:
+        records.sort(key=lambda r: str(r.get(col) or "").lower(), reverse=reverse)
+
+
 def _para(text, style_name="cell"):
     """Wrap text in a Paragraph so reportlab auto-wraps it."""
     from reportlab.lib.styles import ParagraphStyle
@@ -972,8 +995,12 @@ def export_pdf():
     from reportlab.lib.units import mm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from io import BytesIO
+    import html
 
     tab = (request.args.get("tab") or "bank").lower()
+    payment_status_param = (request.args.get("payment_status") or "").strip().lower()
+    if tab in ("paid", "pending") and not payment_status_param:
+        payment_status_param = tab
     sort_key = (request.args.get("sort") or "est_id").strip()
 
     sort_map = {
@@ -985,6 +1012,7 @@ def export_pdf():
         "amount": ("total_amount", True),
         "aeo": ("aeo", False),
         "period": ("period", False),
+        "payment_status": ("payment_status", False),
     }
     col, reverse = sort_map.get(sort_key, ("est_id", False))
 
@@ -1014,7 +1042,7 @@ def export_pdf():
                     ORDER BY b.id DESC
                 """)
             records = [_row_dict(r) for r in cur.fetchall()]
-            records.sort(key=lambda r: (r.get(col) or ""), reverse=reverse)
+            _sort_records(records, col, reverse)
 
             _cell = ParagraphStyle("cell", fontSize=7, leading=8, wordWrap="CJK")
             headers = ["#", "Est Code", "Establishment", "AEO", "Period", "7A", "7Q(7A)", "14B", "7Q(14B)",
@@ -1031,6 +1059,59 @@ def export_pdf():
                      str(r.get("account_number","") or "—"),
                      (r.get("payment_status","") or "").upper()] for i, r in enumerate(records)]
             title = "8F Issued Records"
+        elif tab in ("paid", "pending"):
+            payment_filter = "paid" if tab == "paid" else "pending"
+            if USE_POSTGRES:
+                cur.execute("""
+                    SELECT b.id, e.est_id, e.est_name, b.aeo,
+                           b.period,
+                           b.amount_7a_total, b.amount_7q_7a_total, b.amount_14b_total, b.amount_7q_14b_total,
+                           b.total_amount,
+                           b.eight_f_number, b.eight_f_issued_date,
+                           b.demand_type, b.rrc_number, b.rrc_date,
+                           b.payment_status,
+                           b.bank_name, b.ifsc, b.account_number
+                    FROM bank_accounts b
+                    JOIN establishments e ON e.id = b.establishment_id
+                    WHERE LOWER(b.payment_status) = %s
+                    ORDER BY b.id DESC
+                """, (payment_filter,))
+            else:
+                cur.execute("""
+                    SELECT b.id, e.est_id, e.est_name, b.aeo,
+                           b.period,
+                           b.amount_7a_total, b.amount_7q_7a_total, b.amount_14b_total, b.amount_7q_14b_total,
+                           b.total_amount,
+                           b.eight_f_number, b.eight_f_issued_date,
+                           b.demand_type, b.rrc_number, b.rrc_date,
+                           b.payment_status,
+                           b.bank_name, b.ifsc, b.account_number
+                    FROM bank_accounts b
+                    JOIN establishments e ON e.id = b.establishment_id
+                    WHERE LOWER(b.payment_status) = ?
+                    ORDER BY b.id DESC
+                """, (payment_filter,))
+            records = [_row_dict(r) for r in cur.fetchall()]
+            _sort_records(records, col, reverse)
+
+            _cell = ParagraphStyle("cell", fontSize=7, leading=8, wordWrap="CJK")
+            headers = ["#", "Est Code", "Establishment", "AEO", "Period", "7A", "7Q (7A)", "14B", "7Q (14B)",
+                       "Grand Total", "8F No", "8F Date", "Demand", "RRC No", "RRC Date", "Payment", "Bank", "IFSC", "Account No"]
+            rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), _cell),
+                     Paragraph(str(r.get("aeo","") or "—"), _cell),
+                     Paragraph(str(r.get("period","") or "—"), _cell),
+                     _fmt_money(r.get("amount_7a_total")),
+                     _fmt_money(r.get("amount_7q_7a_total")), _fmt_money(r.get("amount_14b_total")),
+                     _fmt_money(r.get("amount_7q_14b_total")), _fmt_money(r.get("total_amount")),
+                     r.get("eight_f_number",""), _fmt_date(r.get("eight_f_issued_date")),
+                     html.escape((r.get("demand_type") or "").upper() or "—"),
+                     html.escape(r.get("rrc_number") or "—"),
+                     html.escape(r.get("rrc_date") or "—"),
+                     (r.get("payment_status","") or "").upper(),
+                     Paragraph(str(r.get("bank_name","") or "—"), _cell),
+                     str(r.get("ifsc","") or "—"),
+                     str(r.get("account_number","") or "—")] for i, r in enumerate(records)]
+            title = f"Payment Status: {tab.upper()}"
         else:
             cur.execute("""
                 SELECT b.id, b.account_number, b.ifsc, b.bank_name, b.branch, b.address,
@@ -1041,7 +1122,7 @@ def export_pdf():
                 JOIN establishments e ON e.id = b.establishment_id
             """)
             records = [_row_dict(r) for r in cur.fetchall()]
-            records.sort(key=lambda r: (r.get(col) or ""), reverse=reverse)
+            _sort_records(records, col, reverse)
 
             _cell = ParagraphStyle("cell", fontSize=7, leading=8, wordWrap="CJK")
             headers = ["#", "Est Code", "Establishment", "AEO", "IFSC", "Bank", "Branch",
@@ -1057,7 +1138,7 @@ def export_pdf():
                      (r.get("payment_status","") or "").upper(),
                      r.get("eight_f_number","") if r.get("eight_f_issued") else "—",
                      _fmt_date(r.get("eight_f_issued_date")) if r.get("eight_f_issued") else "—"] for i, r in enumerate(records)]
-            title = "Entered Bank Accounts"
+            title = f"Bank Accounts ({payment_status_param.upper()})" if payment_status_param else "Entered Bank Accounts"
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
@@ -1075,9 +1156,9 @@ def export_pdf():
     data = [wrapped_headers] + rows
     col_count = len(headers)
     avail = 281 * mm
-    if tab == "8f":
-        # #, Est Code, Establishment, AEO, Period, 7A, 7Q(7A), 14B, 7Q(14B), Grand Total, 8F No, 8F Date, Bank, IFSC, A/c No, Status
-        widths = [6, 30, 30, 24, 18, 24, 24, 24, 24, 28, 16, 18, 20, 22, 20, 14]
+    if tab in ("8f", "paid", "pending"):
+        # #, Est Code, Establishment, AEO, Period, 7A, 7Q(7A), 14B, 7Q(14B), Grand Total, 8F No, 8F Date, Demand, RRC No, RRC Date, Payment, Bank, IFSC, Account No
+        widths = [6, 30, 30, 24, 18, 24, 24, 24, 24, 28, 16, 18, 20, 22, 20, 16, 22, 14]
     else:
         # #, Est Code, Establishment, AEO, IFSC, Bank, Branch, A/c No, Period, Total, Payment, 8F No, 8F Date
         widths = [6, 30, 32, 26, 24, 28, 22, 26, 22, 30, 16, 16, 20]

@@ -580,6 +580,8 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="bank-accounts">Entered Bank Accounts <span class="count-badge" id="totalCount">0</span></button>
       <button class="tab-btn" data-tab="epfo-8f">8F Issued <span class="count-badge" id="eightFCount">0</span></button>
+      <button class="tab-btn" data-tab="paid">Payment Status: PAID <span class="count-badge" id="paidCount">0</span></button>
+      <button class="tab-btn" data-tab="pending">Payment Status: PENDING <span class="count-badge" id="pendingCount">0</span></button>
     </div>
 
     <!-- Bank Accounts Tab -->
@@ -599,6 +601,7 @@
           <option value="amount">Sort: Amount</option>
           <option value="aeo">Sort: AEO</option>
           <option value="period">Sort: Period</option>
+          <option value="payment_status">Sort: Payment</option>
         </select>
         <button id="refreshList">Refresh</button>
         <button class="btn-pdf" id="exportBankPdf">Export PDF</button>
@@ -645,6 +648,7 @@
           <option value="amount">Sort: Amount</option>
           <option value="aeo">Sort: AEO</option>
           <option value="period">Sort: Period</option>
+          <option value="payment_status">Sort: Payment</option>
         </select>
         <button id="refreshEightF">Refresh</button>
         <button class="btn-pdf" id="exportEightFPdf">Export PDF</button>
@@ -679,6 +683,107 @@
         <div class="empty-row" id="emptyEightFRow" style="display:none;">No 8F records yet.</div>
       </div>
     </div>
+
+    <!-- Paid Records Tab -->
+    <div class="section tab-content" data-tab-content="paid" style="display:none;">
+      <div class="section-header">Payment Status: PAID Records</div>
+      <div class="list-toolbar">
+        <input type="search" id="paidSearch" placeholder="Filter by est code, name, AEO, IFSC..." />
+        <select id="paidSortBy">
+          <option value="est_id">Sort: Est Code</option>
+          <option value="est_name">Sort: Establishment</option>
+          <option value="ifsc">Sort: IFSC</option>
+          <option value="bank">Sort: Bank</option>
+          <option value="branch">Sort: Branch</option>
+          <option value="amount">Sort: Amount</option>
+          <option value="aeo">Sort: AEO</option>
+          <option value="period">Sort: Period</option>
+          <option value="payment_status">Sort: Payment Status</option>
+        </select>
+        <button id="refreshPaidList">Refresh</button>
+        <button class="btn-pdf" id="exportPaidPdf">Export PDF</button>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="col-id">#</th>
+              <th class="col-code">Est Code</th>
+              <th class="col-est">Establishment</th>
+              <th class="col-aeo">AEO</th>
+              <th class="col-period">Period</th>
+              <th class="col-amount">7A</th>
+              <th class="col-amount">7Q (7A)</th>
+              <th class="col-amount">14B</th>
+              <th class="col-amount">7Q (14B)</th>
+              <th class="col-total">Grand Total</th>
+              <th class="col-8f-no">8F No</th>
+              <th class="col-8f-date">8F Date</th>
+              <th class="col-demand">Demand</th>
+              <th class="col-rrc">RRC No</th>
+              <th class="col-rrc-date">RRC Date</th>
+              <th class="col-status">Payment</th>
+              <th class="col-bank">Bank</th>
+              <th class="col-ifsc">IFSC</th>
+              <th class="col-acct">Account No</th>
+            </tr>
+          </thead>
+          <tbody id="paidRows"></tbody>
+        </table>
+        <div class="empty-row" id="emptyPaidRow" style="display:none;">No paid records found.</div>
+      </div>
+    </div>
+
+    <!-- Pending Records Tab -->
+    <div class="section tab-content" data-tab-content="pending" style="display:none;">
+      <div class="section-header">Payment Status: PENDING Records</div>
+      <div class="list-toolbar">
+        <input type="search" id="pendingSearch" placeholder="Filter by est code, name, AEO, IFSC..." />
+        <select id="pendingSortBy">
+          <option value="est_id">Sort: Est Code</option>
+          <option value="est_name">Sort: Establishment</option>
+          <option value="ifsc">Sort: IFSC</option>
+          <option value="bank">Sort: Bank</option>
+          <option value="branch">Sort: Branch</option>
+          <option value="amount">Sort: Amount</option>
+          <option value="aeo">Sort: AEO</option>
+          <option value="period">Sort: Period</option>
+          <option value="payment_status">Sort: Payment Status</option>
+        </select>
+        <button id="refreshPendingList">Refresh</button>
+        <button class="btn-pdf" id="exportPendingPdf">Export PDF</button>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="col-id">#</th>
+              <th class="col-code">Est Code</th>
+              <th class="col-est">Establishment</th>
+              <th class="col-aeo">AEO</th>
+              <th class="col-period">Period</th>
+              <th class="col-amount">7A</th>
+              <th class="col-amount">7Q (7A)</th>
+              <th class="col-amount">14B</th>
+              <th class="col-amount">7Q (14B)</th>
+              <th class="col-total">Grand Total</th>
+              <th class="col-8f-no">8F No</th>
+              <th class="col-8f-date">8F Date</th>
+              <th class="col-demand">Demand</th>
+              <th class="col-rrc">RRC No</th>
+              <th class="col-rrc-date">RRC Date</th>
+              <th class="col-status">Payment</th>
+              <th class="col-bank">Bank</th>
+              <th class="col-ifsc">IFSC</th>
+              <th class="col-acct">Account No</th>
+            </tr>
+          </thead>
+          <tbody id="pendingRows"></tbody>
+        </table>
+        <div class="empty-row" id="emptyPendingRow" style="display:none;">No pending records found.</div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -715,6 +820,8 @@
     let editingId = null;
     let bankAccounts = [];
     let eightFRecords = [];
+    let paidRecords = [];
+    let pendingRecords = [];
 
     // ============================================================
     // HELPERS
@@ -1143,6 +1250,23 @@
     const bankRowsEl = document.getElementById('bankRows');
     const emptyRowEl = document.getElementById('emptyRow');
 
+    // Shared sort for every list tab. Maps the <select> value to the real record
+    // field and sorts strings ascending (natural order), amount descending.
+    function sortRecords(rows, sortBy) {
+      if (sortBy === 'amount') {
+        rows.sort((a, b) => Number(b.total_amount || 0) - Number(a.total_amount || 0));
+        return rows;
+      }
+      const keyMap = {
+        est_id: 'est_id', est_name: 'est_name', ifsc: 'ifsc', bank: 'bank_name',
+        branch: 'branch', aeo: 'aeo', period: 'period', payment_status: 'payment_status',
+      };
+      const k = keyMap[sortBy] || 'est_id';
+      rows.sort((a, b) => String(a[k] ?? '').localeCompare(
+        String(b[k] ?? ''), undefined, { numeric: true, sensitivity: 'base' }));
+      return rows;
+    }
+
     function renderRows() {
       const q = listSearch.value.trim().toLowerCase();
       const estFilter = document.getElementById('filterEst').value;
@@ -1153,11 +1277,13 @@
         rows = rows.filter(u =>
           (u.est_id || '').toLowerCase().includes(q) ||
           (u.est_name || '').toLowerCase().includes(q) ||
+          (u.aeo || '').toLowerCase().includes(q) ||
           (u.ifsc || '').toLowerCase().includes(q) ||
           (u.bank_name || '').toLowerCase().includes(q) ||
           (u.account_number || '').toLowerCase().includes(q) ||
           (u.branch || '').toLowerCase().includes(q));
       }
+      sortRecords(rows, document.getElementById('bankSortBy').value);
       document.getElementById('totalCount').textContent = rows.length;
       if (rows.length === 0) {
         bankRowsEl.innerHTML = '';
@@ -1216,17 +1342,28 @@
       const filterEl = document.getElementById('filterEst');
       const currentVal = filterEl.value;
       const groups = new Map();
+      let paidCount = 0;
+      let pendingCount = 0;
       bankAccounts.forEach(u => {
+        const st = (u.payment_status || 'pending').toLowerCase();
+        if (st === 'paid') paidCount++;
+        else pendingCount++;
         if (!groups.has(u.establishment_id)) {
           groups.set(u.establishment_id, { id: u.establishment_id, est_id: u.est_id, est_name: u.est_name, count: 0 });
         }
         groups.get(u.establishment_id).count++;
       });
+      const paidCountEl = document.getElementById('paidCount');
+      if (paidCountEl) paidCountEl.textContent = paidCount;
+      const pendingCountEl = document.getElementById('pendingCount');
+      if (pendingCountEl) pendingCountEl.textContent = pendingCount;
       const sorted = Array.from(groups.values()).sort((a, b) => b.count - a.count);
       filterEl.innerHTML = '<option value="">All Establishments (' + bankAccounts.length + ')</option>' +
         sorted.map(c => `<option value="${c.id}">${escapeHtml(c.est_id)} — ${escapeHtml(c.est_name)} (${c.count})</option>`).join('');
       filterEl.value = currentVal;
       renderRows();
+      if (typeof renderPaidRows === 'function') renderPaidRows();
+      if (typeof renderPendingRows === 'function') renderPendingRows();
     }
 
     bankRowsEl.addEventListener('click', async (e) => {
@@ -1326,6 +1463,7 @@
 
     listSearch.addEventListener('input', renderRows);
     document.getElementById('filterEst').addEventListener('change', renderRows);
+    document.getElementById('bankSortBy').addEventListener('change', renderRows);
     document.getElementById('refreshList').addEventListener('click', loadBankAccounts);
 
     // ============================================================
@@ -1340,6 +1478,8 @@
           c.style.display = c.dataset.tabContent === tab ? 'block' : 'none';
         });
         if (tab === 'epfo-8f') loadEightFRecords();
+        if (tab === 'paid') loadPaidRecords();
+        if (tab === 'pending') loadPendingRecords();
       });
     });
 
@@ -1352,7 +1492,7 @@
 
     function renderEightFRows() {
       const q = eightFSearchEl.value.trim().toLowerCase();
-      const rows = q
+      let rows = q
         ? eightFRecords.filter(r =>
             (r.est_id || '').toLowerCase().includes(q) ||
             (r.est_name || '').toLowerCase().includes(q) ||
@@ -1360,7 +1500,8 @@
             (r.ifsc || '').toLowerCase().includes(q) ||
             (r.bank_name || '').toLowerCase().includes(q) ||
             (r.eight_f_number || '').toLowerCase().includes(q))
-        : eightFRecords;
+        : eightFRecords.slice();
+      sortRecords(rows, document.getElementById('eightFSortBy').value);
       document.getElementById('eightFCount').textContent = rows.length;
       if (rows.length === 0) {
         eightFRowsEl.innerHTML = '';
@@ -1401,7 +1542,141 @@
       renderEightFRows();
     }
     eightFSearchEl.addEventListener('input', renderEightFRows);
+    document.getElementById('eightFSortBy').addEventListener('change', renderEightFRows);
     document.getElementById('refreshEightF').addEventListener('click', loadEightFRecords);
+
+    // PAID and PENDING event listeners
+    document.getElementById('paidSearch')?.addEventListener('input', renderPaidRows);
+    document.getElementById('paidSortBy')?.addEventListener('change', renderPaidRows);
+    document.getElementById('refreshPaidList')?.addEventListener('click', loadPaidRecords);
+
+    document.getElementById('pendingSearch')?.addEventListener('input', renderPendingRows);
+    document.getElementById('pendingSortBy')?.addEventListener('change', renderPendingRows);
+    document.getElementById('refreshPendingList')?.addEventListener('click', loadPendingRecords);
+
+    // ============================================================
+    // PAID RECORDS
+    // ============================================================
+    const paidRowsEl = document.getElementById('paidRows');
+    const emptyPaidRowEl = document.getElementById('emptyPaidRow');
+    const paidSearchEl = document.getElementById('paidSearch');
+
+    async function loadPaidRecords() {
+      const res = await fetch('/api/bank-accounts?payment_status=paid');
+      paidRecords = await res.json();
+      renderPaidRows();
+    }
+
+    function renderPaidRows() {
+      const q = paidSearchEl?.value.trim().toLowerCase() || '';
+      const sortBy = document.getElementById('paidSortBy')?.value || 'est_id';
+      let rows = q
+        ? paidRecords.filter(r =>
+            (r.est_id || '').toLowerCase().includes(q) ||
+            (r.est_name || '').toLowerCase().includes(q) ||
+            (r.aeo || '').toLowerCase().includes(q) ||
+            (r.ifsc || '').toLowerCase().includes(q) ||
+            (r.bank_name || '').toLowerCase().includes(q) ||
+            (r.eight_f_number || '').toLowerCase().includes(q))
+        : paidRecords.slice();
+
+      sortRecords(rows, sortBy);
+
+      document.getElementById('paidCount').textContent = rows.length;
+      if (rows.length === 0) {
+        paidRowsEl.innerHTML = '';
+        emptyPaidRowEl.style.display = 'block';
+        return;
+      }
+      emptyPaidRowEl.style.display = 'none';
+      paidRowsEl.innerHTML = rows.map((r, i) => {
+        const periodFormatted = formatPeriodShort(r.period || '');
+        return `
+        <tr>
+          <td class="col-id">${i + 1}</td>
+          <td class="col-code">${escapeHtml(r.est_id || '')}</td>
+          <td class="col-est wrap">${escapeHtml(r.est_name || '')}</td>
+          <td class="col-aeo wrap">${escapeHtml(r.aeo || '—')}</td>
+          <td class="col-period">${periodFormatted}</td>
+          <td class="col-amount">${fmtMoney(r.amount_7a_total)}</td>
+          <td class="col-amount">${fmtMoney(r.amount_7q_7a_total)}</td>
+          <td class="col-amount">${fmtMoney(r.amount_14b_total)}</td>
+          <td class="col-amount">${fmtMoney(r.amount_7q_14b_total)}</td>
+          <td class="col-total">${fmtMoney(r.total_amount)}</td>
+          <td class="col-8f-no">${escapeHtml(r.eight_f_number || '—')}</td>
+          <td class="col-8f-date">${escapeHtml(r.eight_f_issued_date || '—')}</td>
+          <td class="col-demand">${escapeHtml((r.demand_type || '').toUpperCase() || '—')}</td>
+          <td class="col-rrc">${escapeHtml(r.rrc_number || '—')}</td>
+          <td class="col-rrc-date">${escapeHtml(r.rrc_date || '—')}</td>
+          <td class="col-status"><span class="status-pill ${(r.payment_status || 'pending').toLowerCase()}">${escapeHtml((r.payment_status || 'pending').toUpperCase())}</span></td>
+          <td class="col-bank">${escapeHtml(r.bank_name || '—')}</td>
+          <td class="col-ifsc">${escapeHtml(r.ifsc || '—')}</td>
+          <td class="col-acct">${escapeHtml(r.account_number || '—')}</td>
+        </tr>
+      `}).join('');
+    }
+
+    // ============================================================
+    // PENDING RECORDS
+    // ============================================================
+    const pendingRowsEl = document.getElementById('pendingRows');
+    const emptyPendingRowEl = document.getElementById('emptyPendingRow');
+    const pendingSearchEl = document.getElementById('pendingSearch');
+
+    async function loadPendingRecords() {
+      const res = await fetch('/api/bank-accounts?payment_status=pending');
+      pendingRecords = await res.json();
+      renderPendingRows();
+    }
+
+    function renderPendingRows() {
+      const q = pendingSearchEl?.value.trim().toLowerCase() || '';
+      const sortBy = document.getElementById('pendingSortBy')?.value || 'est_id';
+      let rows = q
+        ? pendingRecords.filter(r =>
+            (r.est_id || '').toLowerCase().includes(q) ||
+            (r.est_name || '').toLowerCase().includes(q) ||
+            (r.aeo || '').toLowerCase().includes(q) ||
+            (r.ifsc || '').toLowerCase().includes(q) ||
+            (r.bank_name || '').toLowerCase().includes(q) ||
+            (r.eight_f_number || '').toLowerCase().includes(q))
+        : pendingRecords.slice();
+
+      sortRecords(rows, sortBy);
+
+      document.getElementById('pendingCount').textContent = rows.length;
+      if (rows.length === 0) {
+        pendingRowsEl.innerHTML = '';
+        emptyPendingRowEl.style.display = 'block';
+        return;
+      }
+      emptyPendingRowEl.style.display = 'none';
+      pendingRowsEl.innerHTML = rows.map((r, i) => {
+        const periodFormatted = formatPeriodShort(r.period || '');
+        return `
+        <tr>
+          <td class="col-id">${i + 1}</td>
+          <td class="col-code">${escapeHtml(r.est_id || '')}</td>
+          <td class="col-est wrap">${escapeHtml(r.est_name || '')}</td>
+          <td class="col-aeo wrap">${escapeHtml(r.aeo || '—')}</td>
+          <td class="col-period">${periodFormatted}</td>
+          <td class="col-amount">${fmtMoney(r.amount_7a_total)}</td>
+          <td class="col-amount">${fmtMoney(r.amount_7q_7a_total)}</td>
+          <td class="col-amount">${fmtMoney(r.amount_14b_total)}</td>
+          <td class="col-amount">${fmtMoney(r.amount_7q_14b_total)}</td>
+          <td class="col-total">${fmtMoney(r.total_amount)}</td>
+          <td class="col-8f-no">${escapeHtml(r.eight_f_number || '—')}</td>
+          <td class="col-8f-date">${escapeHtml(r.eight_f_issued_date || '—')}</td>
+          <td class="col-demand">${escapeHtml((r.demand_type || '').toUpperCase() || '—')}</td>
+          <td class="col-rrc">${escapeHtml(r.rrc_number || '—')}</td>
+          <td class="col-rrc-date">${escapeHtml(r.rrc_date || '—')}</td>
+          <td class="col-status"><span class="status-pill ${(r.payment_status || 'pending').toLowerCase()}">${escapeHtml((r.payment_status || 'pending').toUpperCase())}</span></td>
+          <td class="col-bank">${escapeHtml(r.bank_name || '—')}</td>
+          <td class="col-ifsc">${escapeHtml(r.ifsc || '—')}</td>
+          <td class="col-acct">${escapeHtml(r.account_number || '—')}</td>
+        </tr>
+      `}).join('');
+    }
 
     // ============================================================
     // PDF EXPORT
@@ -1416,6 +1691,8 @@
     document.getElementById('exportEightFPdf').addEventListener('click', () => {
       exportPdf('8f', document.getElementById('eightFSortBy').value);
     });
+    document.getElementById('exportPaidPdf')?.addEventListener('click', () => exportPdf('paid', document.getElementById('paidSortBy').value));
+    document.getElementById('exportPendingPdf')?.addEventListener('click', () => exportPdf('pending', document.getElementById('pendingSortBy').value));
 
     // ============================================================
     // INIT
@@ -1462,7 +1739,7 @@
       updateClock();
       setInterval(updateClock, 1000);
       // Load data in parallel; skip pre-loading 48k establishments (lazy on search focus)
-      await Promise.all([loadBankAccounts(), loadEightFRecords()]);
+      await Promise.all([loadBankAccounts(), loadEightFRecords(), loadPaidRecords(), loadPendingRecords()]);
       recalcTotal();
     })();
 
