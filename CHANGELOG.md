@@ -1,5 +1,21 @@
 # Changelog
 
+## [2026-09-01] — v1.3.0
+
+### Added
+- **Role-based access control.** Two roles derived from the login email against the `ADMIN_EMAILS` env var (default `raghunatha.maharana@gmail.com`); no role column in the DB.
+- `owner_email` column on `bank_accounts` and `epfo_8f_records`, stamped from the session on create; existing rows back-filled to the admin on startup.
+- Admin-only **"Entered By"** column on all four list tabs and in PDF exports, plus a per-tab "Entered by" filter dropdown (`GET /api/entry-owners`).
+- `role` field in `GET /api/me`.
+
+### Changed
+- `/bank` and every `/api/*` data route now require a logged-in session; `/admin`, `/api/users`, `/api/entry-owners` require the admin role.
+- Bank-account and 8F list/read/update/delete/PDF queries are scoped to the caller's `owner_email` unless the caller is admin.
+- Accessing another user's bank-account row by ID returns `404` (was: visible to anyone).
+
+### Migration
+- `init_db()` adds `owner_email` (backward-compatible `ALTER TABLE`), back-fills NULLs to the admin email, and creates `idx_bank_accounts_owner` / `idx_epfo_8f_records_owner`. Runs on every startup; idempotent.
+
 ## [2026-09-01] — v1.2.8
 
 ### Fixed

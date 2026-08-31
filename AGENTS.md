@@ -118,7 +118,7 @@
 
 ## Current Development Status
 
-**Last Completed:** v1.2.8 — Fix unrunnable app + dead bank-page JS, PDF sort crash, PUT dropping Demand/RRC fields; working sort/filter on all list tabs + "Sort: Payment" option; removed debug code
+**Last Completed:** v1.3.0 — Role-based access control (owner_email column + backfill, admin via ADMIN_EMAILS, login required on all data routes, owner-scoped list/read/update/delete/PDF, admin "Entered By" column + per-tab filter)
 
 **Currently Working On:** Saving to memory
 
@@ -139,6 +139,7 @@
 - Database auto-migrates new columns backward-compatibly
 - List tabs: working sort dropdown (shared sortRecords helper) + AEO in the Entered Bank Accounts filter
 - /bank served as a static file (not via render_template)
+- RBAC: users see only their own entries; admin (ADMIN_EMAILS env) sees all + "Entered By" column/filter; login required on all data routes
 
 **Next Tasks:**
 1. ✅ v1.2.7 — Demand/RRC fields (completed)
@@ -161,7 +162,7 @@
 - URL: `https://bank-account-app.onrender.com`
 - Plan: Free tier
 - Auto-deploys from GitHub main branch
-- Env vars: DATABASE_URL, SECRET_KEY, PASSWORD_SALT, PYTHON_VERSION
+- Env vars: DATABASE_URL, SECRET_KEY, PASSWORD_SALT, PYTHON_VERSION, ADMIN_EMAILS (comma-separated; default `raghunatha.maharana@gmail.com`)
 
 **Version History (in bank.html):**
 - v1.0.0 — Initial release (bank.html rewrite)
@@ -180,13 +181,14 @@
 - v1.2.5 — PDF right-align amounts
 - v1.2.6 — Optimize bank page load
 - v1.2.7 — Demand type + RRC fields
-- v1.2.8 — Stability fixes (startup, dead page JS, PDF sort, PUT Demand/RRC), working list sort/filter, "Sort: Payment" option, debug cleanup (current)
+- v1.2.8 — Stability fixes (startup, dead page JS, PDF sort, PUT Demand/RRC), working list sort/filter, "Sort: Payment" option, debug cleanup
+- v1.3.0 — Role-based access control (owner_email, admin via ADMIN_EMAILS, full route lockdown) (current)
 
 **Database Schema (current):**
 - `onboarded_users`: id, full_name, email, phone, date_of_birth, country, password_hash, created_at
 - `establishments`: id, sr_no, est_id, est_name, office, circle, aeo, phone
-- `bank_accounts`: id, establishment_id, account_number, ifsc, code, bank_name, branch, address, city1, city2, district, state, phone, contact, aeo, period, amount_7a_ac1-22, amount_7a_total, amount_7q_7a_ac1-22, amount_7q_7a_total, amount_14b_ac1-22, amount_14b_total, amount_7q_14b_ac1-22, amount_7q_14b_total, total_amount, payment_status, payment_date, eight_f_issued, eight_f_number, eight_f_issued_date, created_at, demand_type, rrc_number, rrc_date
-- `epfo_8f_records`: same structure + bank_account_id, establishment_id, est_id, est_name, eight_f_number, etc.
+- `bank_accounts`: id, establishment_id, account_number, ifsc, code, bank_name, branch, address, city1, city2, district, state, phone, contact, aeo, period, amount_7a_ac1-22, amount_7a_total, amount_7q_7a_ac1-22, amount_7q_7a_total, amount_14b_ac1-22, amount_14b_total, amount_7q_14b_ac1-22, amount_7q_14b_total, total_amount, payment_status, payment_date, eight_f_issued, eight_f_number, eight_f_issued_date, created_at, demand_type, rrc_number, rrc_date, owner_email
+- `epfo_8f_records`: same structure + bank_account_id, establishment_id, est_id, est_name, eight_f_number, owner_email, etc.
 
 **Migration Procedure:**
 - `init_db()` is idempotent — runs CREATE TABLE IF NOT EXISTS
