@@ -103,3 +103,46 @@ def test_admin_routes_ok_for_admin(client, login):
 def test_login_page_still_public(client):
     assert client.get("/login").status_code == 200
     assert client.get("/signup").status_code == 200
+
+
+def test_user_sees_only_own_bank_accounts(client, login, est_ids):
+    login(client, "u1@example.com", user_id=1)
+    r = client.post("/api/bank-accounts", json=make_bank_payload(est_ids[0]))
+    assert r.status_code == 201
+    row_id = r.get_json()["id"]
+
+    login(client, "u2@example.com", user_id=2)
+    listing = client.get("/api/bank-accounts").get_json()
+    assert all(x["id"] != row_id for x in listing)
+
+    login(client, "admin@example.com", user_id=3)
+    listing = client.get("/api/bank-accounts").get_json()
+    match = [x for x in listing if x["id"] == row_id]
+    assert match and match[0]["owner_email"] == "u1@example.com"
+
+
+def test_post_stamps_owner_email_on_bank_and_8f(client, login, est_ids):
+    login(client, "u1@example.com", user_id=1)
+    payload = make_bank_payload(est_ids[0], eight_f_issued="true",
+                                eight_f_number="8F-1", eight_f_issued_date="2021-01-01",
+                                est_id="ORBBS0000000001", est_name="Alpha Establishment")
+    r = client.post("/api/bank-accounts", json=payload)
+    assert r.status_code == 201
+    with app_module._db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT owner_email FROM bank_accounts WHERE id = ?", (r.get_json()["id"],))
+        assert cur.fetchone()[0] == "u1@example.com"
+        cur.execute("SELECT owner_email FROM epfo_8f_records WHERE bank_account_id = ?",
+                    (r.get_json()["id"],))
+        assert cur.fetchone()[0] == "u1@example.com"
+
+
+def test_get_by_id_404_for_non_owner(client, login, est_ids):
+    login(client, "u1@example.com", user_id=1)
+    row_id = client.post("/api/bank-accounts", json=make_bank_payload(est_ids[0])).get_json()["id"]
+
+    login(client, "u2@example.com", user_id=2)
+    assert client.get(f"/api/bank-accounts/{row_id}").status_code == 404
+
+    login(client, "admin@example.com", user_id=3)
+    assert client.get(f"/api/bank-accounts/{row_id}").status_code == 200

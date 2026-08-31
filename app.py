@@ -137,6 +137,17 @@ def _row_dict(row):
     return row
 
 
+def owner_scope_sql(column):
+    """WHERE-fragment restricting rows to the caller unless they are admin.
+
+    Returns (sql_fragment, params). Fragment starts with ' AND ' so it can be
+    appended to an existing WHERE; callers that have no WHERE yet must handle
+    the AND->WHERE swap (see bank_accounts GET)."""
+    if is_admin():
+        return "", []
+    return f" AND LOWER({column}) = ? ", [session.get("user_email", "").strip().lower()]
+
+
 # ============================================================
 # SCHEMA DEFINITIONS
 # ============================================================
@@ -674,14 +685,22 @@ def bank_accounts():
                 b.payment_status, b.payment_date, b.eight_f_issued,
                 b.eight_f_number, b.eight_f_issued_date,
                 b.demand_type, b.rrc_number, b.rrc_date,
+                b.owner_email,
                 e.est_id, e.est_name
 FROM bank_accounts b
                  JOIN establishments e ON e.id = b.establishment_id
             """
+            conditions = []
             params = []
             if payment_status in ("paid", "pending"):
-                sql += " WHERE LOWER(b.payment_status) = %s" if USE_POSTGRES else " WHERE LOWER(b.payment_status) = ?"
+                conditions.append("LOWER(b.payment_status) = ?")
                 params.append(payment_status)
+            scope_sql, scope_params = owner_scope_sql("b.owner_email")
+            if scope_sql:
+                conditions.append(scope_sql.replace(" AND ", "", 1).strip())
+                params.extend(scope_params)
+            if conditions:
+                sql += " WHERE " + " AND ".join(conditions)
             sql += " ORDER BY b.id DESC"
             cur.execute(_translate_sql(sql), params)
             data = [_row_dict(r) for r in cur.fetchall()]
@@ -733,8 +752,8 @@ FROM bank_accounts b
     try:
         with _db() as conn:
             cur = conn.cursor()
-            insert_cols = "establishment_id, account_number, ifsc, code, bank_name, branch, address, city1, city2, district, state, phone, contact, aeo, period, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, total_amount, payment_status, payment_date, eight_f_issued, eight_f_number, eight_f_issued_date, demand_type, rrc_number, rrc_date"
-            placeholders = ", ".join(["%s" if USE_POSTGRES else "?"] * 48)
+            insert_cols = "establishment_id, account_number, ifsc, code, bank_name, branch, address, city1, city2, district, state, phone, contact, aeo, period, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, total_amount, payment_status, payment_date, eight_f_issued, eight_f_number, eight_f_issued_date, demand_type, rrc_number, rrc_date, owner_email"
+            placeholders = ", ".join(["%s" if USE_POSTGRES else "?"] * 49)
             insert_sql = f"INSERT INTO bank_accounts ({insert_cols}) VALUES ({placeholders})"
             if USE_POSTGRES:
                 insert_sql += " RETURNING id"
@@ -762,6 +781,7 @@ FROM bank_accounts b
                 (payload.get("demand_type") or "").strip().lower() or None,
                 (payload.get("rrc_number") or "").strip() or None,
                 (payload.get("rrc_date") or "").strip() or None,
+                session.get("user_email"),
             )
             cur.execute(insert_sql, values)
             if USE_POSTGRES:
@@ -770,8 +790,8 @@ FROM bank_accounts b
             else:
                 bank_id = cur.lastrowid
             if eight_f_issued:
-                epfo_cols = "bank_account_id, establishment_id, est_id, est_name, aeo, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, city1, city2, district, state, phone, period, total_amount, payment_status, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, demand_type, rrc_number, rrc_date"
-                epfo_placeholders = ", ".join(["%s" if USE_POSTGRES else "?"] * 47)
+                epfo_cols = "bank_account_id, establishment_id, est_id, est_name, aeo, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, city1, city2, district, state, phone, period, total_amount, payment_status, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, demand_type, rrc_number, rrc_date, owner_email"
+                epfo_placeholders = ", ".join(["%s" if USE_POSTGRES else "?"] * 48)
                 epfo_sql = f"INSERT INTO epfo_8f_records ({epfo_cols}) VALUES ({epfo_placeholders})"
                 epfo_values = (
                     bank_id, est_id,
@@ -797,6 +817,7 @@ FROM bank_accounts b
                     (payload.get("demand_type") or "").strip().lower() or None,
                     (payload.get("rrc_number") or "").strip() or None,
                     (payload.get("rrc_date") or "").strip() or None,
+                    session.get("user_email"),
                 )
                 cur.execute(epfo_sql, epfo_values)
             conn.commit()
@@ -821,6 +842,7 @@ def bank_account_detail(bank_id: int):
                 SELECT b.id, b.establishment_id, b.account_number, b.ifsc,
                        b.code, b.bank_name, b.branch, b.address, b.city1, b.city2,
                        b.district, b.state, b.phone, b.contact, b.aeo, b.created_at,
+                       b.owner_email,
                        e.est_id, e.est_name
                 FROM bank_accounts b
                 JOIN establishments e ON e.id = b.establishment_id
@@ -829,6 +851,7 @@ def bank_account_detail(bank_id: int):
                 SELECT b.id, b.establishment_id, b.account_number, b.ifsc,
                        b.code, b.bank_name, b.branch, b.address, b.city1, b.city2,
                        b.district, b.state, b.phone, b.contact, b.aeo, b.created_at,
+                       b.owner_email,
                        e.est_id, e.est_name
                 FROM bank_accounts b
                 JOIN establishments e ON e.id = b.establishment_id
@@ -837,7 +860,11 @@ def bank_account_detail(bank_id: int):
             row = cur.fetchone()
             if row is None:
                 return jsonify({"status": "error", "message": "Not found"}), 404
-            return jsonify(_row_dict(row))
+            row = _row_dict(row)
+            if not is_admin() and (row.get("owner_email") or "").strip().lower() != \
+                    session.get("user_email", "").strip().lower():
+                return jsonify({"status": "error", "message": "Not found"}), 404
+            return jsonify(row)
 
     if request.method == "DELETE":
         with _db() as conn:
