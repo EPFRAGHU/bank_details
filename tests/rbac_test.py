@@ -175,6 +175,49 @@ def test_owner_can_update_and_owner_email_is_stable(client, login, est_ids):
         assert owner == "u1@example.com" and bank == "Renamed Bank"
 
 
+def test_export_records_scoped_and_owner_filtered(client, login, est_ids):
+    login(client, "u1@example.com", user_id=1)
+    client.post("/api/bank-accounts", json=make_bank_payload(est_ids[0]))
+    login(client, "u2@example.com", user_id=2)
+    client.post("/api/bank-accounts", json=make_bank_payload(est_ids[1]))
+
+    login(client, "u1@example.com", user_id=1)
+    with app_module.app.test_request_context("/api/export-pdf?tab=bank"):
+        from flask import session
+        session["user_id"] = 1
+        session["user_email"] = "u1@example.com"
+        rows = app_module._export_records("bank", "est_id", None)
+    assert len(rows) == 1 and rows[0]["owner_email"] == "u1@example.com"
+
+    with app_module.app.test_request_context("/api/export-pdf?tab=bank&owner=u2@example.com"):
+        from flask import session
+        session["user_id"] = 3
+        session["user_email"] = "admin@example.com"
+        rows = app_module._export_records("bank", "est_id", "u2@example.com")
+    assert len(rows) == 1 and rows[0]["owner_email"] == "u2@example.com"
+
+
+def test_export_pdf_endpoint_status(client, login, est_ids):
+    login(client, "u1@example.com", user_id=1)
+    client.post("/api/bank-accounts", json=make_bank_payload(est_ids[0]))
+    for tab in ("bank", "8f", "paid", "pending"):
+        r = client.get(f"/api/export-pdf?tab={tab}")
+        assert r.status_code == 200
+        assert r.mimetype == "application/pdf"
+
+
+def test_export_pdf_non_admin_owner_param_ignored(client, login, est_ids):
+    login(client, "u1@example.com", user_id=1)
+    client.post("/api/bank-accounts", json=make_bank_payload(est_ids[0]))
+    login(client, "u2@example.com", user_id=2)
+    with app_module.app.test_request_context("/api/export-pdf?tab=bank&owner=u1@example.com"):
+        from flask import session
+        session["user_id"] = 2
+        session["user_email"] = "u2@example.com"
+        rows = app_module._export_records("bank", "est_id", "u1@example.com")
+    assert rows == []  # u2 owns nothing; the owner param must not widen scope
+
+
 def test_epfo_8f_list_scoped_to_owner(client, login, est_ids):
     login(client, "u1@example.com", user_id=1)
     client.post("/api/bank-accounts", json=make_bank_payload(

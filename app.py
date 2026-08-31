@@ -1115,12 +1115,62 @@ def _fmt_address(addr):
     return s if s else "—"
 
 
-def _sort_records(records, col, reverse):
-    """Sort export records by a column, handling numeric vs text columns safely."""
-    if col == "total_amount":
-        records.sort(key=lambda r: _to_float(r.get(col)), reverse=reverse)
-    else:
-        records.sort(key=lambda r: str(r.get(col) or "").lower(), reverse=reverse)
+def _export_records(tab, sort_key, owner_filter):
+    """Rows for a PDF export, owner-scoped. owner_filter (an email) is applied
+    only when the caller is admin; a non-admin is always scoped to themselves."""
+    sort_map = {
+        "est_id": ("est_id", False), "est_name": ("est_name", False),
+        "ifsc": ("ifsc", False), "bank": ("bank_name", False),
+        "branch": ("branch", False), "amount": ("total_amount", True),
+        "aeo": ("aeo", False), "period": ("period", False),
+        "payment_status": ("payment_status", False),
+    }
+    col, reverse = sort_map.get(sort_key, ("est_id", False))
+    scope_sql, scope_params = owner_scope_sql("b.owner_email")
+    extra, extra_params = "", []
+    if is_admin() and owner_filter:
+        extra = " AND LOWER(b.owner_email) = ? "
+        extra_params = [owner_filter.strip().lower()]
+
+    def _sorted(recs):
+        recs.sort(key=lambda r: _to_float(r.get(col)) if col == "total_amount"
+                  else str(r.get(col) or "").lower(), reverse=reverse)
+        return recs
+
+    with _db() as conn:
+        cur = conn.cursor()
+        if tab == "8f":
+            base = """SELECT b.id + 1000000 AS id, e.est_id, e.est_name, b.aeo,
+                       b.eight_f_number, b.eight_f_issued_date, b.account_number, b.ifsc,
+                       b.bank_name, b.branch, b.address, b.period, b.total_amount, b.payment_status,
+                       b.amount_7a_total, b.amount_7q_7a_total, b.amount_14b_total, b.amount_7q_14b_total,
+                       b.owner_email
+                    FROM bank_accounts b JOIN establishments e ON e.id = b.establishment_id
+                    WHERE b.eight_f_issued = 1"""
+            sql = base + scope_sql + extra + " ORDER BY b.id DESC"
+        elif tab in ("paid", "pending"):
+            base = """SELECT b.id, e.est_id, e.est_name, b.aeo, b.period,
+                       b.amount_7a_total, b.amount_7q_7a_total, b.amount_14b_total, b.amount_7q_14b_total,
+                       b.total_amount, b.eight_f_number, b.eight_f_issued_date,
+                       b.demand_type, b.rrc_number, b.rrc_date, b.payment_status,
+                       b.bank_name, b.ifsc, b.account_number, b.owner_email
+                    FROM bank_accounts b JOIN establishments e ON e.id = b.establishment_id
+                    WHERE LOWER(b.payment_status) = ?"""
+            sql = base + scope_sql + extra + " ORDER BY b.id DESC"
+            params = [("paid" if tab == "paid" else "pending")] + scope_params + extra_params
+            cur.execute(_translate_sql(sql), params)
+            return _sorted([_row_dict(r) for r in cur.fetchall()])
+        else:  # bank
+            base = """SELECT b.id, b.account_number, b.ifsc, b.bank_name, b.branch, b.address,
+                       b.period, b.total_amount, b.payment_status, b.eight_f_issued,
+                       b.eight_f_number, b.eight_f_issued_date, b.aeo,
+                       e.est_id, e.est_name, b.owner_email
+                    FROM bank_accounts b JOIN establishments e ON e.id = b.establishment_id
+                    WHERE 1 = 1"""
+            sql = base + scope_sql + extra
+        params = scope_params + extra_params
+        cur.execute(_translate_sql(sql), params)
+        return _sorted([_row_dict(r) for r in cur.fetchall()])
 
 
 def _para(text, style_name="cell"):
@@ -1147,143 +1197,63 @@ def export_pdf():
     if tab in ("paid", "pending") and not payment_status_param:
         payment_status_param = tab
     sort_key = (request.args.get("sort") or "est_id").strip()
+    owner_filter = request.args.get("owner") if is_admin() else None
+    records = _export_records(tab, sort_key, owner_filter)
 
-    sort_map = {
-        "est_id": ("est_id", False),
-        "est_name": ("est_name", False),
-        "ifsc": ("ifsc", False),
-        "bank": ("bank_name", False),
-        "branch": ("branch", False),
-        "amount": ("total_amount", True),
-        "aeo": ("aeo", False),
-        "period": ("period", False),
-        "payment_status": ("payment_status", False),
-    }
-    col, reverse = sort_map.get(sort_key, ("est_id", False))
+    _cell = ParagraphStyle("cell", fontSize=7, leading=8, wordWrap="CJK")
+    if tab == "8f":
+        headers = ["#", "Est Code", "Establishment", "AEO", "Period", "7A", "7Q(7A)", "14B", "7Q(14B)",
+                   "Grand Total", "8F No", "8F Date", "Bank", "IFSC", "A/c No", "Status"]
+        rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), _cell),
+                 Paragraph(str(r.get("aeo","") or "—"), _cell),
+                 Paragraph(str(r.get("period","") or "—"), _cell),
+                 _fmt_money(r.get("amount_7a_total")),
+                 _fmt_money(r.get("amount_7q_7a_total")), _fmt_money(r.get("amount_14b_total")),
+                 _fmt_money(r.get("amount_7q_14b_total")), _fmt_money(r.get("total_amount")),
+                 r.get("eight_f_number",""), _fmt_date(r.get("eight_f_issued_date")),
+                 Paragraph(str(r.get("bank_name","") or "—"), _cell),
+                 str(r.get("ifsc","") or "—"),
+                 str(r.get("account_number","") or "—"),
+                 (r.get("payment_status","") or "").upper()] for i, r in enumerate(records)]
+        title = "8F Issued Records"
+    elif tab in ("paid", "pending"):
+        headers = ["#", "Est Code", "Establishment", "AEO", "Period", "7A", "7Q (7A)", "14B", "7Q (14B)",
+                   "Grand Total", "8F No", "8F Date", "Demand", "RRC No", "RRC Date", "Payment", "Bank", "IFSC", "Account No"]
+        rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), _cell),
+                 Paragraph(str(r.get("aeo","") or "—"), _cell),
+                 Paragraph(str(r.get("period","") or "—"), _cell),
+                 _fmt_money(r.get("amount_7a_total")),
+                 _fmt_money(r.get("amount_7q_7a_total")), _fmt_money(r.get("amount_14b_total")),
+                 _fmt_money(r.get("amount_7q_14b_total")), _fmt_money(r.get("total_amount")),
+                 r.get("eight_f_number",""), _fmt_date(r.get("eight_f_issued_date")),
+                 html.escape((r.get("demand_type") or "").upper() or "—"),
+                 html.escape(r.get("rrc_number") or "—"),
+                 html.escape(r.get("rrc_date") or "—"),
+                 (r.get("payment_status","") or "").upper(),
+                 Paragraph(str(r.get("bank_name","") or "—"), _cell),
+                 str(r.get("ifsc","") or "—"),
+                 str(r.get("account_number","") or "—")] for i, r in enumerate(records)]
+        title = f"Payment Status: {tab.upper()}"
+    else:
+        headers = ["#", "Est Code", "Establishment", "AEO", "IFSC", "Bank", "Branch",
+                   "A/c No", "Period", "Total", "Payment", "8F No", "8F Date"]
+        rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), _cell),
+                 Paragraph(str(r.get("aeo","") or "—"), _cell),
+                 str(r.get("ifsc","") or "—"),
+                 Paragraph(str(r.get("bank_name","") or "—"), _cell),
+                 Paragraph(str(r.get("branch","") or "—"), _cell),
+                 str(r.get("account_number","") or "—"),
+                 Paragraph(str(r.get("period","") or "—"), _cell),
+                 _fmt_money(r.get("total_amount")),
+                 (r.get("payment_status","") or "").upper(),
+                 r.get("eight_f_number","") if r.get("eight_f_issued") else "—",
+                 _fmt_date(r.get("eight_f_issued_date")) if r.get("eight_f_issued") else "—"] for i, r in enumerate(records)]
+        title = f"Bank Accounts ({payment_status_param.upper()})" if payment_status_param else "Entered Bank Accounts"
 
-    with _db() as conn:
-        cur = conn.cursor()
-        if tab == "8f":
-            if USE_POSTGRES:
-                cur.execute("""
-                    SELECT b.id + 1000000 AS id, e.est_id, e.est_name, b.aeo,
-                           b.eight_f_number, b.eight_f_issued_date, b.account_number, b.ifsc,
-                           b.bank_name, b.branch, b.address, b.period, b.total_amount, b.payment_status,
-                           b.amount_7a_total, b.amount_7q_7a_total, b.amount_14b_total, b.amount_7q_14b_total
-                    FROM bank_accounts b
-                    JOIN establishments e ON e.id = b.establishment_id
-                    WHERE b.eight_f_issued = 1
-                    ORDER BY b.id DESC
-                """)
-            else:
-                cur.execute("""
-                    SELECT b.id + 1000000 AS id, e.est_id, e.est_name, b.aeo,
-                           b.eight_f_number, b.eight_f_issued_date, b.account_number, b.ifsc,
-                           b.bank_name, b.branch, b.address, b.period, b.total_amount, b.payment_status,
-                           b.amount_7a_total, b.amount_7q_7a_total, b.amount_14b_total, b.amount_7q_14b_total
-                    FROM bank_accounts b
-                    JOIN establishments e ON e.id = b.establishment_id
-                    WHERE b.eight_f_issued = 1
-                    ORDER BY b.id DESC
-                """)
-            records = [_row_dict(r) for r in cur.fetchall()]
-            _sort_records(records, col, reverse)
-
-            _cell = ParagraphStyle("cell", fontSize=7, leading=8, wordWrap="CJK")
-            headers = ["#", "Est Code", "Establishment", "AEO", "Period", "7A", "7Q(7A)", "14B", "7Q(14B)",
-                       "Grand Total", "8F No", "8F Date", "Bank", "IFSC", "A/c No", "Status"]
-            rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), _cell),
-                     Paragraph(str(r.get("aeo","") or "—"), _cell),
-                     Paragraph(str(r.get("period","") or "—"), _cell),
-                     _fmt_money(r.get("amount_7a_total")),
-                     _fmt_money(r.get("amount_7q_7a_total")), _fmt_money(r.get("amount_14b_total")),
-                     _fmt_money(r.get("amount_7q_14b_total")), _fmt_money(r.get("total_amount")),
-                     r.get("eight_f_number",""), _fmt_date(r.get("eight_f_issued_date")),
-                     Paragraph(str(r.get("bank_name","") or "—"), _cell),
-                     str(r.get("ifsc","") or "—"),
-                     str(r.get("account_number","") or "—"),
-                     (r.get("payment_status","") or "").upper()] for i, r in enumerate(records)]
-            title = "8F Issued Records"
-        elif tab in ("paid", "pending"):
-            payment_filter = "paid" if tab == "paid" else "pending"
-            if USE_POSTGRES:
-                cur.execute("""
-                    SELECT b.id, e.est_id, e.est_name, b.aeo,
-                           b.period,
-                           b.amount_7a_total, b.amount_7q_7a_total, b.amount_14b_total, b.amount_7q_14b_total,
-                           b.total_amount,
-                           b.eight_f_number, b.eight_f_issued_date,
-                           b.demand_type, b.rrc_number, b.rrc_date,
-                           b.payment_status,
-                           b.bank_name, b.ifsc, b.account_number
-                    FROM bank_accounts b
-                    JOIN establishments e ON e.id = b.establishment_id
-                    WHERE LOWER(b.payment_status) = %s
-                    ORDER BY b.id DESC
-                """, (payment_filter,))
-            else:
-                cur.execute("""
-                    SELECT b.id, e.est_id, e.est_name, b.aeo,
-                           b.period,
-                           b.amount_7a_total, b.amount_7q_7a_total, b.amount_14b_total, b.amount_7q_14b_total,
-                           b.total_amount,
-                           b.eight_f_number, b.eight_f_issued_date,
-                           b.demand_type, b.rrc_number, b.rrc_date,
-                           b.payment_status,
-                           b.bank_name, b.ifsc, b.account_number
-                    FROM bank_accounts b
-                    JOIN establishments e ON e.id = b.establishment_id
-                    WHERE LOWER(b.payment_status) = ?
-                    ORDER BY b.id DESC
-                """, (payment_filter,))
-            records = [_row_dict(r) for r in cur.fetchall()]
-            _sort_records(records, col, reverse)
-
-            _cell = ParagraphStyle("cell", fontSize=7, leading=8, wordWrap="CJK")
-            headers = ["#", "Est Code", "Establishment", "AEO", "Period", "7A", "7Q (7A)", "14B", "7Q (14B)",
-                       "Grand Total", "8F No", "8F Date", "Demand", "RRC No", "RRC Date", "Payment", "Bank", "IFSC", "Account No"]
-            rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), _cell),
-                     Paragraph(str(r.get("aeo","") or "—"), _cell),
-                     Paragraph(str(r.get("period","") or "—"), _cell),
-                     _fmt_money(r.get("amount_7a_total")),
-                     _fmt_money(r.get("amount_7q_7a_total")), _fmt_money(r.get("amount_14b_total")),
-                     _fmt_money(r.get("amount_7q_14b_total")), _fmt_money(r.get("total_amount")),
-                     r.get("eight_f_number",""), _fmt_date(r.get("eight_f_issued_date")),
-                     html.escape((r.get("demand_type") or "").upper() or "—"),
-                     html.escape(r.get("rrc_number") or "—"),
-                     html.escape(r.get("rrc_date") or "—"),
-                     (r.get("payment_status","") or "").upper(),
-                     Paragraph(str(r.get("bank_name","") or "—"), _cell),
-                     str(r.get("ifsc","") or "—"),
-                     str(r.get("account_number","") or "—")] for i, r in enumerate(records)]
-            title = f"Payment Status: {tab.upper()}"
-        else:
-            cur.execute("""
-                SELECT b.id, b.account_number, b.ifsc, b.bank_name, b.branch, b.address,
-                       b.period, b.total_amount, b.payment_status, b.eight_f_issued,
-                       b.eight_f_number, b.eight_f_issued_date, b.aeo,
-                       e.est_id, e.est_name
-                FROM bank_accounts b
-                JOIN establishments e ON e.id = b.establishment_id
-            """)
-            records = [_row_dict(r) for r in cur.fetchall()]
-            _sort_records(records, col, reverse)
-
-            _cell = ParagraphStyle("cell", fontSize=7, leading=8, wordWrap="CJK")
-            headers = ["#", "Est Code", "Establishment", "AEO", "IFSC", "Bank", "Branch",
-                       "A/c No", "Period", "Total", "Payment", "8F No", "8F Date"]
-            rows = [[str(i+1), r.get("est_id",""), Paragraph(str(r.get("est_name","") or ""), _cell),
-                     Paragraph(str(r.get("aeo","") or "—"), _cell),
-                     str(r.get("ifsc","") or "—"),
-                     Paragraph(str(r.get("bank_name","") or "—"), _cell),
-                     Paragraph(str(r.get("branch","") or "—"), _cell),
-                     str(r.get("account_number","") or "—"),
-                     Paragraph(str(r.get("period","") or "—"), _cell),
-                     _fmt_money(r.get("total_amount")),
-                     (r.get("payment_status","") or "").upper(),
-                     r.get("eight_f_number","") if r.get("eight_f_issued") else "—",
-                     _fmt_date(r.get("eight_f_issued_date")) if r.get("eight_f_issued") else "—"] for i, r in enumerate(records)]
-            title = f"Bank Accounts ({payment_status_param.upper()})" if payment_status_param else "Entered Bank Accounts"
+    if is_admin():
+        headers.append("Entered By")
+        for i, rec in enumerate(records):
+            rows[i].append(_para(rec.get("owner_email") or "—"))
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
@@ -1307,6 +1277,8 @@ def export_pdf():
     else:
         # #, Est Code, Establishment, AEO, IFSC, Bank, Branch, A/c No, Period, Total, Payment, 8F No, 8F Date
         widths = [6, 30, 32, 26, 24, 28, 22, 26, 22, 30, 16, 16, 20]
+    if is_admin():
+        widths.append(20)
     total_w = sum(widths)
     if total_w > 0:
         scale = avail / total_w
