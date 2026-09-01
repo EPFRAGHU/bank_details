@@ -118,7 +118,9 @@
 
 ## Current Development Status
 
-**Last Completed:** v1.3.0 — Role-based access control (owner_email column + backfill, admin via ADMIN_EMAILS, login required on all data routes, owner-scoped list/read/update/delete/PDF, admin "Entered By" column + per-tab filter)
+**Last Completed:** v1.3.1 — Post-v1.3.0 fixes: init_db() at import (migrations run under gunicorn/Render), PUT 8F-sync transition fixed, PUT/DELETE missing-id → 404, pytest.ini + .gitignore cleanup
+
+**Prior:** v1.3.0 — Role-based access control (owner_email column + backfill, admin via ADMIN_EMAILS, login required on all data routes, owner-scoped list/read/update/delete/PDF, admin "Entered By" column + per-tab filter)
 
 **Currently Working On:** v1.3.0 shipped to main (pushed); post-deploy verification + follow-up cleanup
 
@@ -133,7 +135,7 @@
 - Period displays as MM/YYYY (e.g. 01/2005 to 05/2010)
 - AEO column properly wraps
 - Running IST clock + clickable version history modal
-- Version manually maintained (v1.3.0 current) — bump in bank.html label + VERSION_HISTORY, AGENTS.md, CHANGELOG.md
+- Version manually maintained (v1.3.1 current) — bump in bank.html label + VERSION_HISTORY, AGENTS.md, CHANGELOG.md
 - `init_db()` runs at import (module scope), so migrations apply under gunicorn on Render — not just `python app.py`
 - Test suite: `pytest` (config in `pytest.ini`, `testpaths = tests`); `tests/rbac_test.py` + `tests/conftest.py`, Flask test_client with session set via `session_transaction()`
 - DB connections go through `_db()` (closing context manager); `_connect()` is the low-level opener
@@ -185,7 +187,8 @@
 - v1.2.6 — Optimize bank page load
 - v1.2.7 — Demand type + RRC fields
 - v1.2.8 — Stability fixes (startup, dead page JS, PDF sort, PUT Demand/RRC), working list sort/filter, "Sort: Payment" option, debug cleanup
-- v1.3.0 — Role-based access control (owner_email, admin via ADMIN_EMAILS, full route lockdown) (current)
+- v1.3.0 — Role-based access control (owner_email, admin via ADMIN_EMAILS, full route lockdown)
+- v1.3.1 — init_db at import (gunicorn migrations), PUT 8F-sync fix, PUT/DELETE 404, pytest.ini (current)
 
 **Database Schema (current):**
 - `onboarded_users`: id, full_name, email, phone, date_of_birth, country, password_hash, created_at

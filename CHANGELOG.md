@@ -1,5 +1,15 @@
 # Changelog
 
+## [2026-09-01] — v1.3.1
+
+### Fixed
+- **Migrations did not run on Render.** `init_db()` only ran under `python app.py`; gunicorn imports the module, so new columns never reached Neon on deploy. `init_db()` now runs at import (guarded).
+- **Ticking "8F Issued" while editing a bank account did nothing.** `PUT /api/bank-accounts/<id>` checked `eight_f_issued` *after* the UPDATE had already set it, so the false→true transition never fired and no `epfo_8f_records` row was created.
+- **`PUT` / `DELETE` to a non-existent record id returned `200`.** Now returns `404` (the old `cur.rowcount` check never referred to the UPDATE).
+
+### Changed
+- Added `pytest.ini` (`testpaths = tests`) so `pytest` collects only the real suite; `.gitignore` scratch-file patterns are now root-anchored so they can't hide a future `tests/` file.
+
 ## [2026-09-01] — v1.3.0
 
 ### Added
