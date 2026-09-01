@@ -1353,7 +1353,15 @@ def ifsc_lookup(code: str):
     })
 
 
-if __name__ == "__main__":
+# Initialize schema / run migrations at import time so this also happens under
+# gunicorn (which imports `app` as a module and never runs the __main__ block).
+# Guarded: a transient DB error at boot must not stop the process from starting.
+try:
     init_db()
+except Exception:
+    app.logger.exception("init_db() failed at import; database schema may be out of date")
+
+
+if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
