@@ -963,11 +963,15 @@ def bank_account_detail(bank_id: int):
     try:
         with _db() as conn:
             cur = conn.cursor()
-            cur.execute(update_sql, update_values)
+            # Read the pre-update state so a false->true 8F transition can be
+            # detected (the UPDATE below overwrites eight_f_issued).
             cur.execute(_translate_sql(f"SELECT eight_f_issued, establishment_id, owner_email FROM bank_accounts WHERE id = {ph}"), (bank_id,))
-            row = cur.fetchone()
-            was_issued = _row_dict(row) if row else None
-            if was_issued and not was_issued.get("eight_f_issued") and str(payload.get("eight_f_issued")).lower() in {"1", "true", "on", "yes"}:
+            existing = _row_dict(cur.fetchone())
+            if existing is None:
+                return jsonify({"status": "error", "message": "Not found"}), 404
+            cur.execute(update_sql, update_values)
+            was_issued = existing
+            if not existing.get("eight_f_issued") and str(payload.get("eight_f_issued")).lower() in {"1", "true", "on", "yes"}:
                 cur.execute(_translate_sql(f"SELECT est_id, est_name FROM establishments WHERE id = {ph}"), (was_issued["establishment_id"],))
                 est_row = _row_dict(cur.fetchone())
                 epfo_cols = "bank_account_id, establishment_id, est_id, est_name, aeo, eight_f_number, eight_f_issued_date, account_number, ifsc, bank_name, branch, address, city1, city2, district, state, phone, period, total_amount, payment_status, amount_7a_ac1, amount_7a_ac2, amount_7a_ac10, amount_7a_ac21, amount_7a_ac22, amount_7a_total, amount_7q_7a_ac1, amount_7q_7a_ac2, amount_7q_7a_ac10, amount_7q_7a_ac21, amount_7q_7a_ac22, amount_7q_7a_total, amount_14b_ac1, amount_14b_ac2, amount_14b_ac10, amount_14b_ac21, amount_14b_ac22, amount_14b_total, amount_7q_14b_ac1, amount_7q_14b_ac2, amount_7q_14b_ac10, amount_7q_14b_ac21, amount_7q_14b_ac22, amount_7q_14b_total, demand_type, rrc_number, rrc_date, owner_email"
@@ -1002,8 +1006,6 @@ def bank_account_detail(bank_id: int):
                 )
                 cur.execute(epfo_sql, epfo_values)
             conn.commit()
-            if cur.rowcount == 0:
-                return jsonify({"status": "error", "message": "Not found"}), 404
     except Exception as e:
         msg = str(e).lower()
         if "foreign key" in msg or "violates" in msg:

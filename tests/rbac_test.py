@@ -256,3 +256,45 @@ def test_entry_owners_lists_distinct_emails_for_admin(client, login, est_ids):
 def test_entry_owners_403_for_user(client, login):
     login(client, "user@example.com")
     assert client.get("/api/entry-owners").status_code == 403
+
+
+# --- Follow-up regression tests (post-merge) ---
+
+def test_put_tick_8f_creates_record_stamped_with_owner(client, login, est_ids):
+    """Turning 8F on via PUT must create an epfo_8f_records row owned by the
+    bank account's owner (the false->true transition path)."""
+    login(client, "u1@example.com", user_id=1)
+    row_id = client.post("/api/bank-accounts",
+                         json=make_bank_payload(est_ids[0])).get_json()["id"]
+
+    r = client.put(f"/api/bank-accounts/{row_id}", json=make_bank_payload(
+        est_ids[0], eight_f_issued="true", eight_f_number="8F-PUT",
+        eight_f_issued_date="2022-02-02"))
+    assert r.status_code == 200
+
+    with app_module._db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT owner_email, eight_f_number FROM epfo_8f_records "
+                    "WHERE bank_account_id = ?", (row_id,))
+        got = cur.fetchone()
+    assert got is not None, "PUT did not create the 8F record"
+    assert got[0] == "u1@example.com"
+    assert got[1] == "8F-PUT"
+
+
+def test_admin_put_nonexistent_id_returns_404(client, login):
+    login(client, "admin@example.com", user_id=9)
+    r = client.put("/api/bank-accounts/999999", json=make_bank_payload(1))
+    assert r.status_code == 404
+    assert r.get_json() == {"status": "error", "message": "Not found"}
+
+
+def test_by_id_404_body_is_identical_for_missing_and_non_owned(client, login, est_ids):
+    login(client, "u1@example.com", user_id=1)
+    row_id = client.post("/api/bank-accounts",
+                         json=make_bank_payload(est_ids[0])).get_json()["id"]
+    login(client, "u2@example.com", user_id=2)
+    missing = client.get("/api/bank-accounts/888888")
+    not_owned = client.get(f"/api/bank-accounts/{row_id}")
+    assert missing.status_code == not_owned.status_code == 404
+    assert missing.get_json() == not_owned.get_json()
