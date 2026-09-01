@@ -120,7 +120,7 @@
 
 **Last Completed:** v1.3.0 — Role-based access control (owner_email column + backfill, admin via ADMIN_EMAILS, login required on all data routes, owner-scoped list/read/update/delete/PDF, admin "Entered By" column + per-tab filter)
 
-**Currently Working On:** Saving to memory
+**Currently Working On:** v1.3.0 shipped to main (pushed); post-deploy verification + follow-up cleanup
 
 **Last Known Working State:**
 - Flask app deployed to Render with Neon PostgreSQL
@@ -133,7 +133,10 @@
 - Period displays as MM/YYYY (e.g. 01/2005 to 05/2010)
 - AEO column properly wraps
 - Running IST clock + clickable version history modal
-- Version manually maintained (v1.2.8 current) — bump in bank.html label + VERSION_HISTORY, AGENTS.md, CHANGELOG.md
+- Version manually maintained (v1.3.0 current) — bump in bank.html label + VERSION_HISTORY, AGENTS.md, CHANGELOG.md
+- `init_db()` runs at import (module scope), so migrations apply under gunicorn on Render — not just `python app.py`
+- Test suite: `pytest` (config in `pytest.ini`, `testpaths = tests`); `tests/rbac_test.py` + `tests/conftest.py`, Flask test_client with session set via `session_transaction()`
+- DB connections go through `_db()` (closing context manager); `_connect()` is the low-level opener
 - Demand type (Current/Arrear) radio + RRC No./Date fields; persisted on both create and edit
 - Tables show Demand, RRC No, RRC Date columns
 - Database auto-migrates new columns backward-compatibly
@@ -142,14 +145,14 @@
 - RBAC: users see only their own entries; admin (ADMIN_EMAILS env) sees all + "Entered By" column/filter; login required on all data routes
 
 **Next Tasks:**
-1. ✅ v1.2.7 — Demand/RRC fields (completed)
-2. ✅ v1.2.8 — Stability fixes + list sort/filter + "Sort: Payment" (completed)
-3. User acceptance testing
+1. ✅ v1.2.8 — Stability fixes + list sort/filter + "Sort: Payment" (completed)
+2. ✅ v1.3.0 — Role-based access control (completed, pushed to main)
+3. Post-deploy: verify Neon migration applied (`owner_email` NOT NULL on all rows), browser QA of admin vs user views
 4. Future feature additions
 
 **Unresolved Issues:**
 - Version-history modal only opens when logged in (handler registered inside the `/api/me` ok block) — pre-existing, low severity
-- Untracked scratch files in repo root (`debug_*.py`, `full_test.py`, `quick_test.py`, `verify.py`, etc.) and `.serena/` not gitignored
+- Untracked scratch files in repo root (`debug_*.py`, `verify.py`, `find_bank.py`, etc.) — now covered by `.gitignore` but not deleted
 
 **Git Repository:** `https://github.com/EPFRAGHU/bank_details.git` (branch: main)
 
